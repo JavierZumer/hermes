@@ -1,2 +1,2 @@
-# hermes
+# Hermes
 FMOD Implementation for Unity
