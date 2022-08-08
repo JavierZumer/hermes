@@ -1,0 +1,18 @@
+{
+    "name": "HermesEditor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:fc7cfc8759e62ce4d8b3b027cd915184"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
