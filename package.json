@@ -1,6 +1,6 @@
 {
     "name": "com.javierzumer.hermes",
-    "version": "1.0.1",
+    "version": "0.0.1",
     "displayName": "Hermes",
     "description": "FMOD Implementation for Unity",
     "unity": "2020.3",
