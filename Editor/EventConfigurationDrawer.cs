@@ -13,7 +13,8 @@ public class EventConfigurationDrawer : PropertyDrawer
     private SerializedProperty m_preloadSampleData;
     private SerializedProperty m_polyphony;
     private SerializedProperty m_numberOfVoices;
-    private SerializedProperty m_reUseVoices;
+    private SerializedProperty m_reUseEventConfiguration;
+    private SerializedProperty m_emitterVoiceStealing;
 
     private readonly float lineHeight = EditorGUIUtility.singleLineHeight;
 
@@ -28,7 +29,8 @@ public class EventConfigurationDrawer : PropertyDrawer
         m_preloadSampleData = property.FindPropertyRelative("PreloadSampleData");
         m_polyphony = property.FindPropertyRelative("Polyphony");
         m_numberOfVoices = property.FindPropertyRelative("NumberOfVoices");
-        m_reUseVoices = property.FindPropertyRelative("ReuseVoices");
+        m_reUseEventConfiguration = property.FindPropertyRelative("ReuseEventConfiguration");
+        m_emitterVoiceStealing = property.FindPropertyRelative("EmitterVoiceStealing");
 
         Rect drawArea = new Rect(position.min.x, position.min.y, position.size.x, EditorGUIUtility.singleLineHeight);
 
@@ -69,7 +71,8 @@ public class EventConfigurationDrawer : PropertyDrawer
 
         if (m_polyphony.enumValueIndex == (int)Polyphony.Polyphonic)
         {
-            DrawNumberOfVoices(drawArea,1);
+            DrawNumberOfVoices(drawArea, 1);
+            DrawVoiceStealing(drawArea, 3);
         }
         else
         {
@@ -81,19 +84,26 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
         m_numberOfVoices.intValue = EditorGUI.IntSlider(drawArea, new GUIContent("Number Of Voices"), m_numberOfVoices.intValue, 1, 30);
+    }
+
+    private void DrawVoiceStealing(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
+        EditorGUI.PropertyField(drawArea, m_emitterVoiceStealing, new GUIContent("Emitter Voice Stealing"));
         DrawReuseVoices(drawArea, 1);
     }
 
     private void DrawReuseVoices(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
-        EditorGUI.PropertyField(drawArea, m_reUseVoices, new GUIContent("Reuse voices"));
+        EditorGUI.PropertyField(drawArea, m_reUseEventConfiguration, new GUIContent("Reuse voices"));
     }
+
 
     //Set property height
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
-        int numberOfLines = 11;
+        int numberOfLines = 12;
 
         if (m_polyphony != null && m_polyphony.enumValueIndex == (int)Polyphony.Polyphonic)
         {
