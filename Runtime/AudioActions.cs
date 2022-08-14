@@ -5,18 +5,10 @@ using UnityEngine;
 
 namespace Hermes
 {
-    /*[Serializable]
+    [Serializable]
     public class AudioActions
     {
-        public enum AudioAction
-        {
-            Play,
-            Stop,
-            SendParameter,
-        }
 
-        public AudioAction Action;
-        public AudioEventStream Stream;
-    }*/
+    }
 }
 
