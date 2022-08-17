@@ -32,7 +32,7 @@ namespace Hermes
         public void CreateFMODEventInstances()
         {
             //If we already created the event instances, just exit.
-            if (m_initialized) {return}
+            if (m_initialized) {return;}
             
             //Add proper size to the fmod event array
             m_eventInstances = new EventInstance[m_eventConfiguration.NumberOfVoices];
