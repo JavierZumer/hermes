@@ -9,8 +9,8 @@ namespace Hermes
 {
     public abstract class AbstractAudioEmitter : MonoBehaviour
     {
-
         protected AudioManager m_audioManager;
+        protected List<EventConfiguration> m_allEvents = new List<EventConfiguration>();
 
         private void Awake()
         {
@@ -19,7 +19,6 @@ namespace Hermes
 
         protected void InitializeEventConfiguration(EventConfiguration eventConfiguration)
         {
-            //Create FMOD instances if required
             if (m_audioManager.DisableAllAudio)
             {
                 //Audio system is disabled so we destroy this emitter and exit silently.
@@ -27,11 +26,17 @@ namespace Hermes
                 return;
             }
 
-            if (eventConfiguration.EventReference.IsNull || String.IsNullOrEmpty(eventConfiguration.EventReference.Path))
+            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull || String.IsNullOrEmpty(eventConfiguration.EventReference.Path))
             {
                 //Should we log an error here? Would we have empty event reference fields on Event configurations ever?
                 return;
             }
+
+            //Add event to emitter event list.
+            m_allEvents.Add(eventConfiguration);
+
+            //Add event to the general event list on the audio manager
+            m_audioManager.SubscribeEvent(eventConfiguration);
 
             //Get FMOD description so we can ask FMOD about this event.
             eventConfiguration.EventDescription = RuntimeManager.GetEventDescription(eventConfiguration.EventReference);
@@ -45,6 +50,9 @@ namespace Hermes
         //Play 2D
         protected void Play(EventConfiguration eventConfiguration)
         {
+
+            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull) { return; }
+
             if (!eventConfiguration.Provider.Initialized)
             {
                 //If we didn't want to create the fmod event instances beforehand, create them now, just before playing.
@@ -59,11 +67,44 @@ namespace Hermes
             eventConfiguration.Provider.GetNextVoice().start();
         }
 
+        /// <summary>
+        /// Stop this event. This will stop all voices.
+        /// </summary>
+        protected void Stop(EventConfiguration eventConfiguration)
+        {
+            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull) { return; }
+
+            foreach (EventInstance instance in eventConfiguration.Provider.EventInstances)
+            {
+                instance.stop(eventConfiguration.AllowFadeOutWhenStopping ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE);
+            }
+        }
+
+        protected void ReleaseEvent(EventConfiguration eventConfiguration)
+        {
+            if (eventConfiguration == null) { return; }
+            //TODO
+        }
+
         //Utilities
-        public bool IsEvent3D(EventConfiguration eventConfiguration)
+        private bool IsEvent3D(EventConfiguration eventConfiguration)
         {
             eventConfiguration.EventDescription.is3D(out bool is3D);
             return is3D;
+        }
+
+        protected virtual void StopAllEventsOnEmitter()
+        {
+            foreach (EventConfiguration eventConfiguration in m_allEvents)
+            {
+                Stop(eventConfiguration);
+            }
+        }
+
+        protected virtual void OnDestroy()
+        {
+            StopAllEventsOnEmitter();
+            //ReleaseAllVoices();
         }
     }
 }

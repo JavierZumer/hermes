@@ -8,7 +8,7 @@ using UnityEngine;
 namespace Hermes
 {
     /// <summary>
-    /// This describes the rules on how to create, play and release a particular FMOD event.
+    /// This describes the rules on how to create, play and release a particular FMOD event on this emitter.
     /// </summary>
     [Serializable]
     public class EventConfiguration
@@ -25,38 +25,34 @@ namespace Hermes
         [Tooltip("Snapshot that would be played as long as the above event plays.")]
         public EventReference HighlightSnapshot;
 
-        [Tooltip("Load Sample data on Initialization. Use this for time sensitive audio. Otherwise it will load when audio is first played.")]
-        public bool PreloadSampleData = false;
-
         //Voice Management
         public Polyphony Polyphony = Polyphony.Monophonic;
-        public int NumberOfVoices = 1;
-        public bool ReuseEventConfiguration = false;
+        public int NumberOfVoices = 2;
         public EmitterVoiceStealing EmitterVoiceStealing = EmitterVoiceStealing.Oldest;
 
-        //Instance Creation/Release
-
+        //Instance Management
         [Tooltip("When to instantiate the Fmod Audio Events")]
         public EventInitializationMode EventInitializationMode = EventInitializationMode.OnEmitterAwake;
 
-        /*[Tooltip("When should we release the AudioEvent(s).")]
-        public ReleaseMode ReleaseMode = ReleaseMode.NotUntilExplicitelyTold;*/
+        [Tooltip("When should we release the AudioEvent(s).")]
+        public EventReleaseMode EventReleaseMode = EventReleaseMode.NotUntilExplicitelyTold;
 
-        [Tooltip("How many instances of this event should exist. 0 Means no limit.")]
+        public bool ReuseInstances = false;
+
+        [Tooltip("Max instances for this emitter. " +
+            "If you need to limit total instances for this event, you will need to set it on FMOD Studio.")]
         [Range(0, 30)]
-        public int MaxNumberOfInstancesAllowed = 0;
+        public int MaxNumberOfInstancesOnThisEmitter = 0;
 
-        //[Header("Other Options")]
+        //Other Options
+        [Tooltip("Load Sample data on Initialization. Use this for time sensitive audio. Otherwise it will load when audio is first played.")]
+        public bool PreloadSampleData = false;
 
         [Tooltip("Prevents event instances from being stopped by AudioManager::StopAllEventInstances.")]
-        [SerializeField]
-        public bool Persistant = false;
+        public bool Steady = false;
 
         [Tooltip("Allow Fade Out when stopping.")]
-        [SerializeField]
         public bool AllowFadeOutWhenStopping = true;
-
-        //public EventDescription m_fmodEventDescription;
     }
 
     public enum Polyphony
@@ -70,6 +66,13 @@ namespace Hermes
         OnEmitterAwake,
         JustInTime,
         NewEventEachTimeWePlay
+    }
+
+    public enum EventReleaseMode
+    {
+        NotUntilExplicitelyTold,
+        WhenAudioFinishes,
+        AfterPlaying,
     }
 
     public enum EmitterVoiceStealing

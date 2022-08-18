@@ -16,6 +16,7 @@ namespace Hermes
         private EventInstance[] m_eventInstances;
 
         public bool Initialized => m_initialized;
+        public EventInstance[] EventInstances => m_eventInstances;
 
         //Constructor
         public FmodEventInstanceProvider(EventConfiguration eventConfiguration)
@@ -33,6 +34,23 @@ namespace Hermes
         {
             //If we already created the event instances, just exit.
             if (m_initialized) {return;}
+
+            if (m_eventConfiguration.ReuseInstances)
+            {
+                //We want to re-use voices so let's check if this fmod event already has instances created
+                m_eventInstances = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventReference.Path);
+
+                if (m_eventInstances != null)
+                {
+                    //We found a valid event config, so let's use those events.
+                    m_initialized = true;
+                    return;
+                }
+                else
+                {
+                    //We didn't find a valid config so we must be the first using this FMOD event. Let's create the events as normal.
+                }
+            }
             
             //Add proper size to the fmod event array
             m_eventInstances = new EventInstance[m_eventConfiguration.NumberOfVoices];
@@ -40,7 +58,10 @@ namespace Hermes
             //Tell FMOD to create the event instances we need.
             for (int i = 0; i < m_totalVoices; i++)
             {
-                m_eventInstances[i] = GetFmodInstance();
+                if (!m_eventInstances[i].isValid())
+                {
+                    m_eventInstances[i] = GetFmodInstance();
+                }
             }
 
             m_initialized = true;

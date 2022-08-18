@@ -10,6 +10,9 @@ namespace Hermes
         [SerializeField]
         private EventConfiguration m_eventConfiguration;
 
+        /*[SerializeField]
+        private EventConfiguration[] m_array;*/
+
         //public bool m_costa;
 
         /*[SerializeField]
