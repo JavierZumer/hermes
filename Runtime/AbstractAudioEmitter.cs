@@ -38,6 +38,9 @@ namespace Hermes
             //Add event to the general event list on the audio manager
             m_audioManager.SubscribeEvent(eventConfiguration);
 
+            //Update number of emitters using this event configuration.
+            eventConfiguration.EmittersUsing++;
+
             //Get FMOD description so we can ask FMOD about this event.
             eventConfiguration.EventDescription = RuntimeManager.GetEventDescription(eventConfiguration.EventReference);
 
@@ -80,17 +83,17 @@ namespace Hermes
             }
         }
 
-        protected void ReleaseEvent(EventConfiguration eventConfiguration)
+        protected virtual void ReleaseAllEvents()
         {
-            if (eventConfiguration == null) { return; }
-            //TODO
+            foreach (EventConfiguration eventConfiguration in m_allEvents)
+            {
+                ReleaseEvent(eventConfiguration);
+            }
         }
 
-        //Utilities
-        private bool IsEvent3D(EventConfiguration eventConfiguration)
+        protected void ReleaseEvent(EventConfiguration eventConfiguration)
         {
-            eventConfiguration.EventDescription.is3D(out bool is3D);
-            return is3D;
+            m_audioManager.ReleaseEvent(eventConfiguration);
         }
 
         protected virtual void StopAllEventsOnEmitter()
@@ -104,7 +107,14 @@ namespace Hermes
         protected virtual void OnDestroy()
         {
             StopAllEventsOnEmitter();
-            //ReleaseAllVoices();
+            ReleaseAllEvents();
+        }
+
+        //Utilities
+        private bool IsEvent3D(EventConfiguration eventConfiguration)
+        {
+            eventConfiguration.EventDescription.is3D(out bool is3D);
+            return is3D;
         }
     }
 }

@@ -75,10 +75,19 @@ namespace Hermes
             return null;
         }
 
-        private void ReleaseEvent (EventConfiguration eventConfiguration)
+        public  void ReleaseEvent (EventConfiguration eventConfiguration)
         {
             //TODO: Do checks related to event config re-use to figure out if we can clear this event config.
+            //If event config has one or less users -> Release it, remove it from m_allEventsConfigsInitialized.
+            //else if event config is not global -> Debe haber otros emitters usando las instancias, que hacemos?
+            //else --> hay mas emitters usando esta voz...
         }
     }
+
+    public class GlobalEventConfig
+    {
+
+    }
+
 }
 

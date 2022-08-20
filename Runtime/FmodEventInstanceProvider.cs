@@ -35,7 +35,7 @@ namespace Hermes
             //If we already created the event instances, just exit.
             if (m_initialized) {return;}
 
-            if (m_eventConfiguration.ReuseInstances)
+            if (m_eventConfiguration.IsGlobal)
             {
                 //We want to re-use voices so let's check if this fmod event already has instances created
                 m_eventInstances = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventReference.Path);
@@ -74,7 +74,7 @@ namespace Hermes
 
         public EventInstance GetNextVoice()
         {
-            if (m_eventConfiguration.Polyphony == Polyphony.Monophonic)
+            if (!m_eventConfiguration.IsPolyphonic)
             {
                 //We only have one event so return that.
                 return m_eventInstances[0];
@@ -83,13 +83,13 @@ namespace Hermes
             //Return the correct event instance depending on the mode.
             switch (m_eventConfiguration.EmitterVoiceStealing)
             {
-                case EmitterVoiceStealing.Oldest:
+                case StealingMode.Oldest:
                     return GetOldestvoice();
-                case EmitterVoiceStealing.Quietest:
+                case StealingMode.Quietest:
                     return GetQuietestVoice();
-                case EmitterVoiceStealing.Furthest:
+                case StealingMode.Furthest:
                     return GetOldestvoice();
-                case EmitterVoiceStealing.None:
+                case StealingMode.None:
                     return GetOldestvoice();
                 default:
                     return GetOldestvoice();
