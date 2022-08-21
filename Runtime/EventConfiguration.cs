@@ -1,3 +1,4 @@
+using FMOD;
 using FMOD.Studio;
 using FMODUnity;
 using System;
@@ -15,8 +16,12 @@ namespace Hermes
     {
         //Internal varialbles
         public FmodEventInstanceProvider Provider;
+        private EventInstance EditorInstance;
         public EventDescription EventDescription;
+
+        [NonSerialized]
         public bool is3D;
+
         public int EmittersUsing;
 
         //Properties
@@ -59,9 +64,29 @@ namespace Hermes
             }
         }
 
+        public string EventPath
+        {
+            get
+            {
+                if (!EventRef.IsNull)
+                {
+                    return EventRef.Path;
+                }
+                return string.Empty;
+            }
+        }
+
+        public bool ValidPath
+        {
+            get
+            {
+                return !String.IsNullOrEmpty(EventPath);
+            }
+        }
+
         //User facing variables
         [Tooltip("FMOD Event Reference")]
-        public EventReference EventReference;
+        public EventReference EventRef;
 
         [Tooltip("Snapshot that would be played as long as the above event plays.")]
         public EventReference HighlightSnapshot;
@@ -90,6 +115,24 @@ namespace Hermes
         public bool AllowFadeOutWhenStopping = true;
 
         //Add Stops events outside max distance.
+
+        public void PlayEventInEditor()
+        {
+            if (String.IsNullOrEmpty(EventPath))
+            {
+                return;
+            }
+            EditorFmodSystem.PreviewEvent(EventRef);
+        }
+
+        public void StopEventInEditor()
+        {
+            if (String.IsNullOrEmpty(EventPath))
+            {
+                return;
+            }
+            //EditorFmodSystem.PreviewStop(EventRef, AllowFadeOutWhenStopping ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE); TODO...
+        }
     }
 
     public enum EventInitializationMode

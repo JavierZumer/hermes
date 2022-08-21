@@ -4,11 +4,15 @@ using UnityEngine;
 using UnityEditor;
 using Hermes;
 using System;
+using FMODUnity;
+using FMOD.Studio;
+using FMOD;
 
 [CustomPropertyDrawer(typeof(EventConfiguration))]
 public class EventConfigurationDrawer : PropertyDrawer
 {
     private SerializedProperty m_eventReference;
+    private string m_eventPath;
     private SerializedProperty m_highlightSnaphsot;
     private SerializedProperty m_preloadSampleData;
     private SerializedProperty m_numberOfVoices;
@@ -20,17 +24,27 @@ public class EventConfigurationDrawer : PropertyDrawer
     private SerializedProperty m_stealingMode;
 
     private bool m_otherOptions;
+    private bool m_referenceFieldExpanded;
+    private bool m_snapshotFieldExpanded;
     private bool m_polyphonic;
+
+    EventConfiguration m_eventConfiguration;
+
+    private EventInstance m_editorInstance;
 
     private readonly float lineHeight = EditorGUIUtility.singleLineHeight;
 
     //Draw on Inspector Window
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
-        //Calculate space needed to draw stuff.
+        //Ref to parent script
+        m_eventConfiguration = (EventConfiguration)fieldInfo.GetValue(property.serializedObject.targetObject);
+
+        //Start the property
         EditorGUI.BeginProperty(position, label, property);
 
-        m_eventReference = property.FindPropertyRelative("EventReference");
+        m_eventReference = property.FindPropertyRelative("EventRef");
+        m_eventPath = m_eventConfiguration.EventPath;
         m_highlightSnaphsot = property.FindPropertyRelative("HighlightSnapshot");
         m_eventInitializationMode = property.FindPropertyRelative("EventInitializationMode");
         m_numberOfVoices = property.FindPropertyRelative("PolyphonyVoices");
@@ -42,7 +56,6 @@ public class EventConfigurationDrawer : PropertyDrawer
         m_allowFadeOutWhenStopping = property.FindPropertyRelative("AllowFadeOutWhenStopping");
 
         Rect drawMainLabel = new Rect(position.min.x, position.min.y, position.size.x, lineHeight);
-
         EditorGUI.LabelField(drawMainLabel, new GUIContent("Event Configuration"),EditorStyles.boldLabel);
 
         //Draw the first property.
@@ -55,17 +68,53 @@ public class EventConfigurationDrawer : PropertyDrawer
     private void DrawEventReference(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
-        EditorGUI.PropertyField(drawArea, m_eventReference,new GUIContent("Event Reference"));
-        DrawHighlightSnapshot(drawArea,2);
+        EditorGUI.PropertyField(drawArea, m_eventReference, new GUIContent("Event Reference"), false);
+        m_referenceFieldExpanded = m_eventReference.isExpanded;
+
+        int refheight = 2;
+
+        if (m_referenceFieldExpanded)
+        {
+            refheight = +6;
+        }
+
+        //DrawHighlightSnapshot(drawArea, refheight);
+        DrawPlayAndStopButtons(drawArea, refheight);
     }
 
     //Add Play and Stop Buttons here?
+    private void DrawPlayAndStopButtons(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height), position.size.x, lineHeight);
+        Rect drawPlay = new Rect(position.min.x, position.min.y + (lineHeight * height), position.size.x*0.47f, lineHeight);
+        if (GUI.Button(drawPlay, new GUIContent("Play Event")))
+        {
+            m_eventConfiguration.PlayEventInEditor();
+        }
+
+        Rect drawStop = new Rect((position.min.x+position.size.x/2), position.min.y + (lineHeight * height), position.size.x / 2, lineHeight);
+        if (GUI.Button(drawStop, new GUIContent("Stop Event")))
+        {
+            m_eventConfiguration.StopEventInEditor();
+        }
+
+        DrawHighlightSnapshot(drawArea, 1);
+    }
 
     private void DrawHighlightSnapshot(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_highlightSnaphsot, new GUIContent("Highlight Snapshot"));
-        DrawInstancesLabel(drawArea, 2);
+        m_snapshotFieldExpanded = m_highlightSnaphsot.isExpanded;
+
+        int snapheight = 2;
+
+        if (m_snapshotFieldExpanded)
+        {
+            snapheight += 5;
+        }
+
+        DrawInstancesLabel(drawArea, snapheight);
     }
 
     private void DrawInstancesLabel(Rect position, int height)
@@ -155,7 +204,19 @@ public class EventConfigurationDrawer : PropertyDrawer
     //Set property height
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
+        //Instead of doing this, as for each property height and return that?
+
         int numberOfLines = 15;
+
+        if (m_referenceFieldExpanded)
+        {
+            numberOfLines += 4;
+        }
+
+        if (m_snapshotFieldExpanded)
+        {
+            numberOfLines += 4;
+        }
 
         if (m_polyphonic)
         {

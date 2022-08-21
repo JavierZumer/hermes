@@ -26,7 +26,7 @@ namespace Hermes
                 return;
             }
 
-            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull || String.IsNullOrEmpty(eventConfiguration.EventReference.Path))
+            if (eventConfiguration == null || eventConfiguration.EventRef.IsNull || String.IsNullOrEmpty(eventConfiguration.EventRef.Path))
             {
                 //Should we log an error here? Would we have empty event reference fields on Event configurations ever?
                 return;
@@ -42,7 +42,7 @@ namespace Hermes
             eventConfiguration.EmittersUsing++;
 
             //Get FMOD description so we can ask FMOD about this event.
-            eventConfiguration.EventDescription = RuntimeManager.GetEventDescription(eventConfiguration.EventReference);
+            eventConfiguration.EventDescription = RuntimeManager.GetEventDescription(eventConfiguration.EventRef);
 
             eventConfiguration.is3D = IsEvent3D(eventConfiguration);
 
@@ -54,7 +54,7 @@ namespace Hermes
         protected void Play(EventConfiguration eventConfiguration)
         {
 
-            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull) { return; }
+            if (eventConfiguration == null || eventConfiguration.EventRef.IsNull) { return; }
 
             if (!eventConfiguration.Provider.Initialized)
             {
@@ -75,7 +75,7 @@ namespace Hermes
         /// </summary>
         protected void Stop(EventConfiguration eventConfiguration)
         {
-            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull) { return; }
+            if (eventConfiguration == null || eventConfiguration.EventRef.IsNull) { return; }
 
             foreach (EventInstance instance in eventConfiguration.Provider.EventInstances)
             {

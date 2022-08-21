@@ -17,6 +17,8 @@ namespace Hermes
         //Banks to load on start.
         [BankRef] public string[] BanksToLoadOnGameStart;
 
+        //BankRef
+
         private List<EventConfiguration> m_allEventsConfigsInitialized = new List<EventConfiguration>();
 
         public void SubscribeEvent (EventConfiguration eventConfiguration)
@@ -55,7 +57,7 @@ namespace Hermes
 
         private void StopEvent(EventConfiguration eventConfiguration)
         {
-            if (eventConfiguration == null || eventConfiguration.EventReference.IsNull) { return; }
+            if (eventConfiguration == null || eventConfiguration.EventRef.IsNull) { return; }
 
             foreach (EventInstance instance in eventConfiguration.Provider.EventInstances)
             {
@@ -67,7 +69,7 @@ namespace Hermes
         {
             foreach (EventConfiguration eventConfiguration in m_allEventsConfigsInitialized)
             {
-                if (eventConfiguration.EventReference.Path == path)
+                if (eventConfiguration.EventRef.Path == path)
                 {
                     return eventConfiguration.Provider.EventInstances;
                 }

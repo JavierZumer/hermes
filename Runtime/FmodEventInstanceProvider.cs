@@ -38,7 +38,7 @@ namespace Hermes
             if (m_eventConfiguration.IsGlobal)
             {
                 //We want to re-use voices so let's check if this fmod event already has instances created
-                m_eventInstances = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventReference.Path);
+                m_eventInstances = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventRef.Path);
 
                 if (m_eventInstances != null)
                 {
@@ -69,7 +69,7 @@ namespace Hermes
 
         private EventInstance GetFmodInstance()
         {
-            return RuntimeManager.CreateInstance(m_eventConfiguration.EventReference);
+            return RuntimeManager.CreateInstance(m_eventConfiguration.EventRef);
         }
 
         public EventInstance GetNextVoice()

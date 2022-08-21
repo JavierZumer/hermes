@@ -2,7 +2,8 @@
     "name": "HermesEditor",
     "rootNamespace": "",
     "references": [
-        "GUID:fc7cfc8759e62ce4d8b3b027cd915184"
+        "GUID:fc7cfc8759e62ce4d8b3b027cd915184",
+        "GUID:0c752da273b17c547ae705acf0f2adf2"
     ],
     "includePlatforms": [
         "Editor"
