@@ -5,6 +5,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Debug = UnityEngine.Debug;
 
 namespace Hermes
 {
@@ -122,7 +123,7 @@ namespace Hermes
             {
                 return;
             }
-            EditorFmodSystem.PreviewEvent(EventRef);
+            EditorInstance = EditorFmodSystem.PreviewEvent(EventRef);
         }
 
         public void StopEventInEditor()
@@ -131,7 +132,7 @@ namespace Hermes
             {
                 return;
             }
-            //EditorFmodSystem.PreviewStop(EventRef, AllowFadeOutWhenStopping ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE); TODO...
+            EditorFmodSystem.PreviewStop(EditorInstance, AllowFadeOutWhenStopping ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE);
         }
     }
 

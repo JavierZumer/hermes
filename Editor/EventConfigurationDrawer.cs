@@ -78,8 +78,14 @@ public class EventConfigurationDrawer : PropertyDrawer
             refheight = +6;
         }
 
-        //DrawHighlightSnapshot(drawArea, refheight);
-        DrawPlayAndStopButtons(drawArea, refheight);
+        if (!String.IsNullOrEmpty(m_eventPath))
+        {
+            DrawPlayAndStopButtons(drawArea, refheight);
+        }
+        else
+        {
+            DrawHighlightSnapshot(drawArea, 2);
+        }
     }
 
     //Add Play and Stop Buttons here?
@@ -114,7 +120,29 @@ public class EventConfigurationDrawer : PropertyDrawer
             snapheight += 5;
         }
 
-        DrawInstancesLabel(drawArea, snapheight);
+        if (m_eventConfiguration != null && !m_eventConfiguration.HighlightSnapshot.IsNull)
+        {
+            RuntimeManager.GetEventDescription(m_eventConfiguration.HighlightSnapshot).isSnapshot(out bool isSnapshot);
+            if (!isSnapshot)
+            {
+                DrawSnapshotHelpBox(drawArea, 1);
+            }
+            else
+            {
+                DrawInstancesLabel(drawArea, snapheight);
+            }
+        }
+        else
+        {
+            DrawInstancesLabel(drawArea, snapheight);
+        }
+    }
+
+    private void DrawSnapshotHelpBox(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
+        EditorGUI.HelpBox(drawArea, "You need to select a snapshot here!", MessageType.Error);
+        DrawInstancesLabel(drawArea, 1);
     }
 
     private void DrawInstancesLabel(Rect position, int height)
@@ -206,7 +234,7 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         //Instead of doing this, as for each property height and return that?
 
-        int numberOfLines = 15;
+        int numberOfLines = 16;
 
         if (m_referenceFieldExpanded)
         {

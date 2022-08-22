@@ -6,6 +6,7 @@ using FMOD;
 using FMOD.Studio;
 using System;
 using UnityEditor;
+using System.Linq;
 
 namespace Hermes
 {
@@ -51,6 +52,18 @@ namespace Hermes
         private void Awake()
         {
             m_bankPathStatic = BankPath;
+        }
+
+#if !FMOD_STORE_UPLOAD
+        [InitializeOnLoadMethod]
+#endif
+        private static void Startup()
+        {
+            EditorApplication.update += Update;
+            AssemblyReloadEvents.beforeAssemblyReload += HandleBeforeAssemblyReload;
+            EditorApplication.playModeStateChanged += HandleOnPlayModeChanged;
+            EditorApplication.pauseStateChanged += HandleOnPausedModeChanged;
+            EditorApplication.update += CallStartupMethodsWhenReady;
         }
 
         private static void CreateSystem()
@@ -101,10 +114,10 @@ namespace Hermes
 
         public static void LoadPreviewBanks()
         {
-            /*if (PreviewBanksLoaded)
+            if (PreviewBanksLoaded)
             {
                 return;
-            }*/
+            }
 
             foreach (var bank in temporaryBanks)
             {
@@ -124,6 +137,133 @@ namespace Hermes
             if (result != FMOD.RESULT.OK)
             {
                 RuntimeUtils.DebugLogError(string.Format("FMOD Studio: Encountered Error: {0} {1}", result, FMOD.Error.String(result)));
+            }
+        }
+
+        private static void HandleBeforeAssemblyReload()
+        {
+            DestroySystem();
+        }
+
+        private static void HandleOnPlayModeChanged(PlayModeStateChange state)
+        {
+            // Entering Play Mode will cause scripts to reload, losing all state
+            // This is the last chance to clean up FMOD and avoid a leak.
+            if (state == PlayModeStateChange.ExitingEditMode)
+            {
+                DestroySystem();
+            }
+        }
+
+        private static void HandleOnPausedModeChanged(PauseState state)
+        {
+            if (RuntimeManager.IsInitialized && RuntimeManager.HaveMasterBanksLoaded)
+            {
+                RuntimeManager.GetBus("bus:/").setPaused(EditorApplication.isPaused);
+                RuntimeManager.StudioSystem.update();
+            }
+        }
+
+        private static void CallStartupMethodsWhenReady()
+        {
+            if (EditorApplication.isUpdating)
+            {
+                // Some startup code accesses Settings.Instance; this can obliterate settings if
+                // the asset database is being updated, so wait until the update is finished.
+                return;
+            }
+
+            EditorApplication.update -= CallStartupMethodsWhenReady;
+
+            // Explicitly initialize Settings so that both it and EditorSettings will work.
+            Settings.Initialize();
+
+            //CheckBaseFolderGUID();
+            //CheckMacLibraries();
+
+            Legacy.CleanTemporaryChanges();
+            CleanObsoleteFiles();
+
+/*#if UNITY_TIMELINE_EXIST
+            // Register timeline event receivers.
+            FMODEventPlayableBehavior.Enter += (sender, args) =>
+            {
+                FMODEventPlayableBehavior behavior = sender as FMODEventPlayableBehavior;
+                if (!string.IsNullOrEmpty(behavior.EventReference.Path))
+                {
+                    LoadPreviewBanks();
+                    EditorEventRef eventRef = EventManager.EventFromPath(behavior.EventReference.Path);
+                    Dictionary<string, float> paramValues = new Dictionary<string, float>();
+                    foreach (EditorParamRef param in eventRef.Parameters)
+                    {
+                        paramValues.Add(param.Name, param.Default);
+                    }
+                    foreach (ParamRef param in behavior.Parameters)
+                    {
+                        paramValues[param.Name] = param.Value;
+                    }
+
+                    args.eventInstance = PreviewEvent(eventRef, paramValues, behavior.CurrentVolume);
+                }
+            };
+
+            FMODEventPlayableBehavior.Exit += (sender, args) =>
+            {
+                FMODEventPlayableBehavior behavior = sender as FMODEventPlayableBehavior;
+                if (behavior.StopType != STOP_MODE.None)
+                {
+                    FMOD.Studio.STOP_MODE stopType = behavior.StopType == STOP_MODE.Immediate ? FMOD.Studio.STOP_MODE.IMMEDIATE : FMOD.Studio.STOP_MODE.ALLOWFADEOUT;
+                    PreviewStop(args.eventInstance, stopType);
+                }
+            };
+
+            FMODEventPlayableBehavior.GraphStop += (sender, args) =>
+            {
+                PreviewStop(args.eventInstance);
+            };
+#endif*/
+
+            /*BuildStatusWatcher.Startup();
+            BankRefresher.Startup();
+            BoltIntegration.Startup();
+            EventManager.Startup();
+            SetupWizardWindow.Startup();*/
+        }
+
+        private static void CleanObsoleteFiles()
+        {
+            if (Environment.GetCommandLineArgs().Any(a => a == "-exportPackage"))
+            {
+                // Don't delete anything or it won't be included in the package
+                return;
+            }
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                // Messing with the asset database while entering play mode causes a NullReferenceException
+                return;
+            }
+
+            string obsoleteFolder = $"Assets/{RuntimeUtils.PluginBasePath}/obsolete";
+
+            if (AssetDatabase.IsValidFolder(obsoleteFolder))
+            {
+                EditorApplication.LockReloadAssemblies();
+
+                string[] guids = AssetDatabase.FindAssets(string.Empty, new string[] { obsoleteFolder });
+                foreach (string guid in guids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    if (AssetDatabase.DeleteAsset(path))
+                    {
+                        RuntimeUtils.DebugLogFormat("FMOD: Removed obsolete file {0}", path);
+                    }
+                }
+                if (AssetDatabase.MoveAssetToTrash(obsoleteFolder))
+                {
+                    RuntimeUtils.DebugLogFormat("FMOD: Removed obsolete folder {0}", obsoleteFolder);
+                }
+                AssetDatabase.Refresh();
+                EditorApplication.UnlockReloadAssemblies();
             }
         }
 
@@ -172,7 +312,7 @@ namespace Hermes
         {
             if (system.isValid())
             {
-                RuntimeUtils.DebugLog("FMOD Studio: Destroying editor system instance");
+                RuntimeUtils.DebugLog("FMOD Studio: Destroying Hermes editor system instance");
                 UnloadPreviewBanks();
                 system.release();
                 system.clearHandle();
@@ -203,8 +343,6 @@ namespace Hermes
             FMOD.Studio.EventDescription eventDescription;
             FMOD.Studio.EventInstance eventInstance;
 
-            LoadPreviewBanks();
-
             CheckResult(System.getEventByID(eventRef.Guid, out eventDescription));
             CheckResult(eventDescription.createInstance(out eventInstance));
 
@@ -233,7 +371,16 @@ namespace Hermes
 
         public static void PreviewStop(FMOD.Studio.EventInstance eventInstance, FMOD.Studio.STOP_MODE stopMode = FMOD.Studio.STOP_MODE.IMMEDIATE)
         {
-            if (previewEventInstances.Contains(eventInstance))
+            if (eventInstance.isValid())
+            {
+                eventInstance.stop(stopMode);
+                eventInstance.release();
+                eventInstance.clearHandle();
+            }
+
+            //StopAllPreviews();
+
+            /*if (previewEventInstances.Contains(eventInstance))
             {
                 previewEventInstances.Remove(eventInstance);
                 if (eventInstance.isValid())
@@ -242,7 +389,7 @@ namespace Hermes
                     eventInstance.release();
                     eventInstance.clearHandle();
                 }
-            }
+            }*/
         }
     }
 }
