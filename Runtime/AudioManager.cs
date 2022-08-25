@@ -14,6 +14,9 @@ namespace Hermes
         [SerializeField]
         public bool DisableAllAudio = false;
 
+        [SerializeField]
+        public bool RTest = false;
+
         //Banks to load on start.
         [BankRef] public string[] BanksToLoadOnGameStart;
 
