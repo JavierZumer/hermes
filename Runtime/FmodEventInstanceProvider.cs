@@ -7,60 +7,70 @@ using UnityEngine;
 
 namespace Hermes
 {
+    public class EventInstancesGroup
+    {
+        public EventInstance[] EventInstances;
+        public int NumberOfConfigsUsing;
+    }
+
     public class FmodEventInstanceProvider
     {
         private bool m_initialized;
         private int m_totalVoices;
         private int m_voiceIndex = 0;
         private EventConfiguration m_eventConfiguration;
-        private EventInstance[] m_eventInstances;
+        private EventInstancesGroup m_instanceGroup = null;
 
         public bool Initialized => m_initialized;
-        public EventInstance[] EventInstances => m_eventInstances;
+        public EventInstance[] EventInstances => m_instanceGroup.EventInstances;
+        public EventInstancesGroup EventInstancesGroup => m_instanceGroup;
 
         //Constructor
         public FmodEventInstanceProvider(EventConfiguration eventConfiguration)
         {
             m_totalVoices = eventConfiguration.NumberOfVoices;
             m_eventConfiguration = eventConfiguration;
+            m_instanceGroup = new EventInstancesGroup();
 
             if (eventConfiguration.EventInitializationMode == EventInitializationMode.OnEmitterAwake)
             {
-                CreateFMODEventInstances();
+                GetFMODEventInstances();
             }
         }
 
-        public void CreateFMODEventInstances()
+        public void GetFMODEventInstances()
         {
-            //If we already created the event instances, just exit.
+            //If we already have the event instances, just exit.
             if (m_initialized) {return;}
 
-            if (m_eventConfiguration.IsGlobal)
+            if (m_eventConfiguration.IsShared)
             {
-                //We want to re-use voices so let's check if this fmod event already has instances created
-                m_eventInstances = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventRef.Path);
+                //We want to re-use instances so let's check if this fmod event already has instances created
+                m_instanceGroup = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventRef.Path);
 
-                if (m_eventInstances != null)
+                if (m_instanceGroup.EventInstances != null)
                 {
                     //We found a valid event config, so let's use those events.
                     m_initialized = true;
+                    m_instanceGroup.NumberOfConfigsUsing++;
                     return;
                 }
                 else
                 {
-                    //We didn't find a valid config so we must be the first using this FMOD event. Let's create the events as normal.
+                    //We didn't find a valid config so we must be the first emitter using this FMOD event. Let's create the events as normal.
                 }
             }
-            
+
             //Add proper size to the fmod event array
-            m_eventInstances = new EventInstance[m_eventConfiguration.NumberOfVoices];
+            m_instanceGroup.EventInstances = new EventInstance[m_eventConfiguration.NumberOfVoices];
+            m_instanceGroup.NumberOfConfigsUsing = 1;
             
             //Tell FMOD to create the event instances we need.
             for (int i = 0; i < m_totalVoices; i++)
             {
-                if (!m_eventInstances[i].isValid())
+                if (!m_instanceGroup.EventInstances[i].isValid())
                 {
-                    m_eventInstances[i] = GetFmodInstance();
+                    m_instanceGroup.EventInstances[i] = GetFmodInstance();
                 }
             }
 
@@ -72,46 +82,47 @@ namespace Hermes
             return RuntimeManager.CreateInstance(m_eventConfiguration.EventRef);
         }
 
-        public EventInstance GetNextVoice()
+        public EventInstance GetNextInstance()
         {
             if (!m_eventConfiguration.IsPolyphonic)
             {
-                //We only have one event so return that.
-                return m_eventInstances[0];
+                //We only have one instance so return that.
+                return m_instanceGroup.EventInstances[0];
             }
 
             //Return the correct event instance depending on the mode.
             switch (m_eventConfiguration.EmitterVoiceStealing)
             {
                 case StealingMode.Oldest:
-                    return GetOldestvoice();
+                    return GetOldestInstance();
                 case StealingMode.Quietest:
-                    return GetQuietestVoice();
+                    return GetQuietestInstance();
                 case StealingMode.Furthest:
-                    return GetOldestvoice();
+                    return GetOldestInstance();
                 case StealingMode.None:
-                    return GetOldestvoice();
+                    return GetOldestInstance();
                 default:
-                    return GetOldestvoice();
+                    return GetOldestInstance();
             }
         }
 
         //Get oldest voice
-        private EventInstance GetOldestvoice()
+        private EventInstance GetOldestInstance()
         {
             int index = m_voiceIndex;
             m_voiceIndex = (m_voiceIndex + 1) % m_eventConfiguration.NumberOfVoices;
-            return m_eventInstances[index];
+            return m_instanceGroup.EventInstances[index];
         }
 
-        private EventInstance GetQuietestVoice()
+        //Quietest
+        private EventInstance GetQuietestInstance()
         {
             //Hacky...
             float lowestVolume = 1000f;
 
-            EventInstance instanceToReturn = m_eventInstances[0];
+            EventInstance instanceToReturn = m_instanceGroup.EventInstances[0];
 
-            foreach (EventInstance instance in m_eventInstances)
+            foreach (EventInstance instance in m_instanceGroup.EventInstances)
             {
                 instance.getVolume(out float volume);
                 if (volume < lowestVolume)
@@ -122,6 +133,29 @@ namespace Hermes
             }
 
             return instanceToReturn;
+        }
+
+        //Furthest
+        private EventInstance GetFurthestInstance()
+        {
+            //TODO...
+            EventInstance instance = m_instanceGroup.EventInstances[0];
+            return instance;
+        }
+
+        public void ReleaseInstanceGroup()
+        {
+            for (int i = 0; i < m_instanceGroup.EventInstances.Length; i++)
+            {
+                EventInstance instance = m_instanceGroup.EventInstances[i];
+                RuntimeManager.DetachInstanceFromGameObject(instance);
+                instance.release();
+                instance.clearHandle();
+            }
+            Array.Clear(m_instanceGroup.EventInstances, 0, m_totalVoices);
+            m_instanceGroup.NumberOfConfigsUsing = 0;
+            m_instanceGroup = null;
+            m_initialized = false;
         }
     }
 }

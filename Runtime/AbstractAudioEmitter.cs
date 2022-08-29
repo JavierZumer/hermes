@@ -12,7 +12,7 @@ namespace Hermes
         protected AudioManager m_audioManager;
         protected List<EventConfiguration> m_allEvents = new List<EventConfiguration>();
 
-        private void Awake()
+        protected virtual void Awake()
         {
             m_audioManager = AudioManager.Instance;
         }
@@ -38,15 +38,12 @@ namespace Hermes
             //Add event to the general event list on the audio manager
             m_audioManager.SubscribeEvent(eventConfiguration);
 
-            //Update number of emitters using this event configuration.
-            eventConfiguration.EmittersUsing++;
-
-            //Get FMOD description so we can ask FMOD about this event.
+            //Get FMOD description so we can ask FMOD about this event. Banks should be loaded BEFORE we do this.
             eventConfiguration.EventDescription = RuntimeManager.GetEventDescription(eventConfiguration.EventRef);
 
             eventConfiguration.is3D = IsEvent3D(eventConfiguration);
 
-            //Let's get an FMOD event provider. This will also create the event instances if the configuration is set to do this.
+            //Let's get an FMOD event provider. This will also create the event instances now if the config agrees.
             eventConfiguration.Provider = new FmodEventInstanceProvider(eventConfiguration);
         }
 
@@ -59,7 +56,7 @@ namespace Hermes
             if (!eventConfiguration.Provider.Initialized)
             {
                 //If we didn't want to create the fmod event instances beforehand, create them now, just before playing.
-                eventConfiguration.Provider.CreateFMODEventInstances();
+                eventConfiguration.Provider.GetFMODEventInstances();
             }
 
             if (eventConfiguration.is3D)
@@ -67,11 +64,12 @@ namespace Hermes
                 Debug.LogWarning($"{eventConfiguration} seems to be a 3D event and you are trying to play it in 2D.");
             }
 
-            eventConfiguration.Provider.GetNextVoice().start();
+            eventConfiguration.Provider.GetNextInstance().start();
         }
 
         /// <summary>
-        /// Stop this event. This will stop all voices.
+        /// Stop this event. This will stop all instances within this emitter.
+        /// If the instances are shared, it will stop all instances across all emitters.
         /// </summary>
         protected void Stop(EventConfiguration eventConfiguration)
         {

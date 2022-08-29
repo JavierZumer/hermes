@@ -14,13 +14,8 @@ namespace Hermes
         [SerializeField]
         public bool DisableAllAudio = false;
 
-        [SerializeField]
-        public bool RTest = false;
-
         //Banks to load on start.
         [BankRef] public string[] BanksToLoadOnGameStart;
-
-        //BankRef
 
         private List<EventConfiguration> m_allEventsConfigsInitialized = new List<EventConfiguration>();
 
@@ -68,31 +63,33 @@ namespace Hermes
             }
         }
 
-        public EventInstance[] CheckIfInstancesAlreadyExist(string path)
+        public EventInstancesGroup CheckIfInstancesAlreadyExist(string path)
         {
             foreach (EventConfiguration eventConfiguration in m_allEventsConfigsInitialized)
             {
-                if (eventConfiguration.EventRef.Path == path)
+                if (eventConfiguration.EventRef.Path == path) //We already initialized 
                 {
-                    return eventConfiguration.Provider.EventInstances;
+                    return eventConfiguration.Provider.EventInstancesGroup;
                 }
             }
             return null;
         }
 
-        public  void ReleaseEvent (EventConfiguration eventConfiguration)
+        public void ReleaseEvent (EventConfiguration eventConfiguration)
         {
-            //TODO: Do checks related to event config re-use to figure out if we can clear this event config.
-            //If event config has one or less users -> Release it, remove it from m_allEventsConfigsInitialized.
-            //else if event config is not global -> Debe haber otros emitters usando las instancias, que hacemos?
-            //else --> hay mas emitters usando esta voz...
+            if (eventConfiguration.Provider.EventInstancesGroup.NumberOfConfigsUsing <= 1) //This is the only emitter using this, so we can clear everything.
+            {
+                eventConfiguration.Provider.ReleaseInstanceGroup();
+                eventConfiguration.EventDescription.unloadSampleData();
+            }
+            else
+            {
+                //Other emitters are still using this EventInstancesGroup but we are not, so we reduce the number of configs using.
+                eventConfiguration.Provider.EventInstancesGroup.NumberOfConfigsUsing--;
+            }
+
+            UnsubscribeEvent(eventConfiguration);
         }
     }
-
-    public class GlobalEventConfig
-    {
-
-    }
-
 }
 

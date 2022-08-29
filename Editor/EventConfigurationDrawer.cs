@@ -7,32 +7,38 @@ using System;
 using FMODUnity;
 using FMOD.Studio;
 using FMOD;
+using Debug = UnityEngine.Debug;
 
 [CustomPropertyDrawer(typeof(EventConfiguration))]
 public class EventConfigurationDrawer : PropertyDrawer
 {
     private SerializedProperty m_eventReference;
-    private string m_eventPath;
     private SerializedProperty m_highlightSnaphsot;
     private SerializedProperty m_preloadSampleData;
+    private SerializedProperty m_shareInstances;
     private SerializedProperty m_numberOfVoices;
     private SerializedProperty m_eventInitializationMode;
     private SerializedProperty m_eventReleaseMode;
-    private SerializedProperty m_instanceShareMode;
+    private SerializedProperty m_polyphonyModes;
     private SerializedProperty m_steady;
     private SerializedProperty m_allowFadeOutWhenStopping;
     private SerializedProperty m_stealingMode;
+    private SerializedProperty m_stopMaxDistance;
 
+    //Optional fields bool
+    private bool m_showTransportButtons;
     private bool m_otherOptions;
+    private bool m_shareInstancesWarning;
     private bool m_referenceFieldExpanded;
     private bool m_snapshotFieldExpanded;
     private bool m_polyphonic;
 
     EventConfiguration m_eventConfiguration;
 
-    private EventInstance m_editorInstance;
-
     private readonly float lineHeight = EditorGUIUtility.singleLineHeight;
+
+    //We keep an static reference to global events and how many emitters are using them.
+    private static Dictionary<string, int> m_globalEvents = new Dictionary<string, int>();
 
     //Draw on Inspector Window
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -44,16 +50,17 @@ public class EventConfigurationDrawer : PropertyDrawer
         EditorGUI.BeginProperty(position, label, property);
 
         m_eventReference = property.FindPropertyRelative("EventRef");
-        m_eventPath = m_eventConfiguration.EventPath;
         m_highlightSnaphsot = property.FindPropertyRelative("HighlightSnapshot");
         m_eventInitializationMode = property.FindPropertyRelative("EventInitializationMode");
         m_numberOfVoices = property.FindPropertyRelative("PolyphonyVoices");
         m_stealingMode = property.FindPropertyRelative("EmitterVoiceStealing");
-        m_instanceShareMode = property.FindPropertyRelative("InstanceShareMode");
+        m_polyphonyModes = property.FindPropertyRelative("PolyphonyModes");
         m_preloadSampleData = property.FindPropertyRelative("PreloadSampleData");
         m_eventReleaseMode = property.FindPropertyRelative("EventReleaseMode");
         m_steady = property.FindPropertyRelative("Steady");
         m_allowFadeOutWhenStopping = property.FindPropertyRelative("AllowFadeOutWhenStopping");
+        m_shareInstances = property.FindPropertyRelative("ShareEventInstances");
+        m_stopMaxDistance = property.FindPropertyRelative("StopEventsAtMaxDistance");
 
         Rect drawMainLabel = new Rect(position.min.x, position.min.y, position.size.x, lineHeight);
         EditorGUI.LabelField(drawMainLabel, new GUIContent("Event Configuration"),EditorStyles.boldLabel);
@@ -61,6 +68,14 @@ public class EventConfigurationDrawer : PropertyDrawer
         //Draw the first property.
         DrawEventReference(position,1);
 
+        /* //Check if we need to update our global events dictionary
+        if (m_eventConfiguration.LastEventPath != m_eventConfiguration.EventPath || m_shareInstances.boolValue != m_eventConfiguration.LastShareInstances) 
+        {
+            m_eventConfiguration.LastEventPath = m_eventConfiguration.EventPath;
+            m_eventConfiguration.LastShareInstances = m_shareInstances.boolValue;
+            m_globalWarning = UpdateGlobalEvents();
+        }*/
+        
         //After drawing the last property, end the Property wrapper.
         EditorGUI.EndProperty();
     }
@@ -78,12 +93,14 @@ public class EventConfigurationDrawer : PropertyDrawer
             refheight = +6;
         }
 
-        if (!String.IsNullOrEmpty(m_eventPath))
+        if (!m_eventConfiguration.EventRef.Guid.IsNull)
         {
+            m_showTransportButtons = true;
             DrawPlayAndStopButtons(drawArea, refheight);
         }
         else
         {
+            m_showTransportButtons = false;
             DrawHighlightSnapshot(drawArea, 2);
         }
     }
@@ -103,7 +120,6 @@ public class EventConfigurationDrawer : PropertyDrawer
         {
             m_eventConfiguration.StopEventInEditor();
         }
-
         DrawHighlightSnapshot(drawArea, 1);
     }
 
@@ -117,20 +133,13 @@ public class EventConfigurationDrawer : PropertyDrawer
 
         if (m_snapshotFieldExpanded)
         {
-            snapheight += 5;
+            snapheight += 4;
         }
 
-        if (m_eventConfiguration != null && !m_eventConfiguration.HighlightSnapshot.IsNull)
+        if (m_eventConfiguration !=  null && m_eventConfiguration.HighlightSnapshot.Path.StartsWith("event:/"))
         {
-            RuntimeManager.GetEventDescription(m_eventConfiguration.HighlightSnapshot).isSnapshot(out bool isSnapshot);
-            if (!isSnapshot)
-            {
-                DrawSnapshotHelpBox(drawArea, 1);
-            }
-            else
-            {
-                DrawInstancesLabel(drawArea, snapheight);
-            }
+            //Do things.
+            DrawSnapshotHelpBox(drawArea, 1);
         }
         else
         {
@@ -141,7 +150,7 @@ public class EventConfigurationDrawer : PropertyDrawer
     private void DrawSnapshotHelpBox(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
-        EditorGUI.HelpBox(drawArea, "You need to select a snapshot here!", MessageType.Error);
+        EditorGUI.HelpBox(drawArea, "You need to select a snapshot here, not an event!", MessageType.Error);
         DrawInstancesLabel(drawArea, 1);
     }
 
@@ -149,23 +158,95 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.LabelField(drawArea, new GUIContent("-- Instance Management --"), EditorStyles.boldLabel);
-        DrawInstanceInitialization(drawArea, 1);
+        DrawInstanceSharing(drawArea, 1);
+    }
+
+    private void DrawInstanceSharing(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
+        EditorGUI.PropertyField(drawArea, m_shareInstances, new GUIContent("Share instances"));
+
+        if (m_shareInstances.boolValue)
+        {
+            m_shareInstancesWarning = true;
+            DrawGlobalWarning(position, 2);
+        }
+        else
+        {
+            m_shareInstancesWarning = false;
+            DrawInstanceInitialization(drawArea, 1);
+        }
+    }
+
+    private void DrawGlobalWarning(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 20, position.size.x, lineHeight * 4);
+        EditorGUI.HelpBox(drawArea, "Event instances will be shared by all emitters that are using this EventReference. " +
+            "Make sure you give all emitters the same settings. The first one to be initialized will dictate the shared behaviour.", MessageType.Info);
+
+        m_shareInstancesWarning = true;
+        DrawInstanceInitialization(drawArea, 4);
     }
 
     private void DrawInstanceInitialization(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_eventInitializationMode, new GUIContent("Instance Initialization"));
-        DrawInstanceShareMode(drawArea, 1);
+        DrawPolyphonyMode(drawArea, 1);
     }
 
-    private void DrawInstanceShareMode(Rect position, int height)
+    //TODO: Unused for now, try to find a way to indicate to user global instance re-use in a more clear way.
+    //At least, we could show the user all the emitters using a particular event but that seems hard to do in editor (would be simpler at runtime).
+    private bool UpdateGlobalEvents()
+    {
+        if (m_shareInstances.boolValue)
+        {
+            if (!m_globalEvents.ContainsKey(m_eventConfiguration.EventPath))
+            {
+                m_globalEvents.Add(m_eventConfiguration.EventPath, 1); //Add entry for the first time
+                return false;
+                //TODO: Get a reference to the parent emitter so we can show it later?
+            }
+            else
+            {
+                //This event is global AND another emitter was already using the same path.
+                m_globalEvents[m_eventConfiguration.EventPath]++; //Bump number of emitters using.
+                Debug.LogError($"We bumped {m_eventConfiguration.EventPath} to {m_globalEvents[m_eventConfiguration.EventPath]}.");
+                return true;
+            }
+        }
+        else
+        {
+            //Not global anymore
+            if (m_globalEvents.TryGetValue(m_eventConfiguration.EventPath, out int n))
+            {
+                if (n <= 1)
+                {
+                    m_globalEvents.Remove(m_eventConfiguration.EventPath); //This is the last emitter using this path, so remove.
+                    return false;
+                }
+                else
+                {
+                    //Not the last emitter so just substract one from index.
+                    m_globalEvents[m_eventConfiguration.EventPath]--;
+                    Debug.LogError($"We reduced {m_eventConfiguration.EventPath} to {m_globalEvents[m_eventConfiguration.EventPath]}.");
+                    return false;
+                }
+            }
+            else
+            {
+                //We didn't find the path on the dictionary so nothing to do.
+                return false;
+            }
+        }
+    }
+
+    private void DrawPolyphonyMode(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
-        EditorGUI.PropertyField(drawArea, m_instanceShareMode, new GUIContent("Instance share mode"));
+        EditorGUI.PropertyField(drawArea, m_polyphonyModes, new GUIContent("Instances Mode"));
 
-        if (m_instanceShareMode.enumValueIndex == (int)InstanceShareMode.LocalPolyphonic ||
-            m_instanceShareMode.enumValueIndex == (int)InstanceShareMode.GlobalPolyphonic)
+        if (m_polyphonyModes.enumValueIndex == (int)PolyphonyMode.Polyphonic)
         {
             m_polyphonic = true;
             DrawNumberOfVoices(drawArea, 1);
@@ -173,6 +254,7 @@ public class EventConfigurationDrawer : PropertyDrawer
         }
         else
         {
+            //Is monophonic
             m_polyphonic = false;
             DrawInstanceRelease(drawArea, 1);
         }
@@ -181,7 +263,7 @@ public class EventConfigurationDrawer : PropertyDrawer
     private void DrawNumberOfVoices(Rect position, int height)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
-        m_numberOfVoices.intValue = EditorGUI.IntSlider(drawArea, new GUIContent("Number Of Voices"), m_numberOfVoices.intValue, 2, 30);
+        m_numberOfVoices.intValue = EditorGUI.IntSlider(drawArea, new GUIContent("Number Of Instances"), m_numberOfVoices.intValue, 2, 30);
     }
 
     private void DrawVoiceStealing(Rect position, int height)
@@ -227,6 +309,13 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_allowFadeOutWhenStopping, new GUIContent("Fadeout When Stopping"));
+        DrawStopAtMaxDistance(drawArea, 1);
+    }
+
+    private void DrawStopAtMaxDistance(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
+        EditorGUI.PropertyField(drawArea, m_stopMaxDistance, new GUIContent("Stop Events At Max distance"));
     }
 
     //Set property height
@@ -241,19 +330,29 @@ public class EventConfigurationDrawer : PropertyDrawer
             numberOfLines += 4;
         }
 
+        if(m_showTransportButtons)
+        {
+            numberOfLines += 1;
+        }
+
         if (m_snapshotFieldExpanded)
+        {
+            numberOfLines += 4;
+        }
+
+        if (m_shareInstancesWarning)
         {
             numberOfLines += 4;
         }
 
         if (m_polyphonic)
         {
-            numberOfLines += 3;
+            numberOfLines += 4;
         }
 
         if (m_otherOptions)
         {
-            numberOfLines += 4;
+            numberOfLines += 6;
         }
 
         return EditorGUIUtility.singleLineHeight * numberOfLines;

@@ -16,25 +16,21 @@ namespace Hermes
     public class EventConfiguration
     {
         //Internal varialbles
-        public FmodEventInstanceProvider Provider;
+        private FmodEventInstanceProvider m_provider = null;
         private EventInstance EditorInstance;
         public EventDescription EventDescription;
+        public bool LastShareInstances = false;
+        public string LastEventPath = "";
 
         [NonSerialized]
         public bool is3D;
 
-        public int EmittersUsing;
-
         //Properties
-        public bool IsGlobal
+        public bool IsShared
         {
             get
             {
-                if (InstanceShareMode == InstanceShareMode.GlobalMonophonic || InstanceShareMode == InstanceShareMode.GlobalPolyphonic)
-                {
-                    return true;
-                }
-                return false;
+                return ShareEventInstances;
             }
         }
 
@@ -42,7 +38,7 @@ namespace Hermes
         {
             get
             {
-                if (InstanceShareMode == InstanceShareMode.LocalPolyphonic || InstanceShareMode == InstanceShareMode.GlobalPolyphonic)
+                if (PolyphonyModes == PolyphonyMode.Polyphonic)
                 {
                     return true;
                 }
@@ -85,7 +81,19 @@ namespace Hermes
             }
         }
 
-        //User facing variables
+        public FmodEventInstanceProvider Provider
+        {
+            get
+            {
+                return m_provider;
+            }
+            set
+            {
+                value = m_provider;
+            }
+        }
+
+        //Path Assignments
         [Tooltip("FMOD Event Reference")]
         public EventReference EventRef;
 
@@ -94,10 +102,12 @@ namespace Hermes
 
         //Instance Management
 
+        public bool ShareEventInstances;
+
         [Tooltip("When to instantiate the Fmod Audio Events")]
         public EventInitializationMode EventInitializationMode = EventInitializationMode.OnEmitterAwake;
 
-        public InstanceShareMode InstanceShareMode = InstanceShareMode.LocalMonophonic;
+        public PolyphonyMode PolyphonyModes = PolyphonyMode.Monophonic;
 
         public int PolyphonyVoices = 2;
         public StealingMode EmitterVoiceStealing = StealingMode.Oldest;
@@ -115,7 +125,9 @@ namespace Hermes
         [Tooltip("Allow Fade Out when stopping.")]
         public bool AllowFadeOutWhenStopping = true;
 
-        //Add Stops events outside max distance.
+        public bool StopEventsAtMaxDistance;
+
+        //TODO: Doppler Options??
 
         public void PlayEventInEditor()
         {
@@ -139,14 +151,14 @@ namespace Hermes
     public enum EventInitializationMode
     {
         OnEmitterAwake,
-        JustInTime,
+        JustBeforePlayingEvent,
     }
 
     public enum EventReleaseMode
     {
         NotUntilExplicitelyTold,
         WhenAudioFinishes,
-        AfterPlaying,
+        AsSoonAsWePlay,
     }
 
     public enum StealingMode
@@ -157,13 +169,10 @@ namespace Hermes
         None
     }
 
-    public enum InstanceShareMode
+    public enum PolyphonyMode
     {
-        LocalMonophonic,
-        GlobalMonophonic,
-        LocalPolyphonic,
-        GlobalPolyphonic,
-        NewEventEachTimeWePlay
+        Monophonic,
+        Polyphonic,
     }
 }
 

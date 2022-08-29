@@ -20,6 +20,12 @@ namespace Hermes
 
         /*[SerializeField]
         private EventReference[] m_refArray;*/
+
+        protected override void Awake()
+        {
+            base.Awake();
+            InitializeEventConfiguration(m_eventConfiguration);
+        }
     }
 }
 
