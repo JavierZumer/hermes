@@ -24,6 +24,7 @@ public class EventConfigurationDrawer : PropertyDrawer
     private SerializedProperty m_allowFadeOutWhenStopping;
     private SerializedProperty m_stealingMode;
     private SerializedProperty m_stopMaxDistance;
+    private SerializedProperty m_calculateKinematicVelocity;
 
     //Optional fields bool
     private bool m_showTransportButtons;
@@ -61,6 +62,7 @@ public class EventConfigurationDrawer : PropertyDrawer
         m_allowFadeOutWhenStopping = property.FindPropertyRelative("AllowFadeOutWhenStopping");
         m_shareInstances = property.FindPropertyRelative("ShareEventInstances");
         m_stopMaxDistance = property.FindPropertyRelative("StopEventsAtMaxDistance");
+        m_calculateKinematicVelocity = property.FindPropertyRelative("CalculateKinematicVelocity");
 
         Rect drawMainLabel = new Rect(position.min.x, position.min.y, position.size.x, lineHeight);
         EditorGUI.LabelField(drawMainLabel, new GUIContent("Event Configuration"),EditorStyles.boldLabel);
@@ -316,6 +318,13 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_stopMaxDistance, new GUIContent("Stop Events At Max distance"));
+        DrawKinematicVelocity(drawArea, 1);
+    }
+
+    private void DrawKinematicVelocity(Rect position, int height)
+    {
+        Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
+        EditorGUI.PropertyField(drawArea, m_calculateKinematicVelocity, new GUIContent("Calculate Kinematic Velocity"));
     }
 
     //Set property height
@@ -352,7 +361,7 @@ public class EventConfigurationDrawer : PropertyDrawer
 
         if (m_otherOptions)
         {
-            numberOfLines += 6;
+            numberOfLines += 7;
         }
 
         return EditorGUIUtility.singleLineHeight * numberOfLines;

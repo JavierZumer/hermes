@@ -21,6 +21,7 @@ namespace Hermes
         public EventDescription EventDescription;
         public bool LastShareInstances = false;
         public string LastEventPath = "";
+        public Transform transform; //We keep track of this for kinematic velocity stuff.
 
         [NonSerialized]
         public bool is3D;
@@ -126,6 +127,8 @@ namespace Hermes
         public bool AllowFadeOutWhenStopping = true;
 
         public bool StopEventsAtMaxDistance;
+
+        public bool CalculateKinematicVelocity;
 
         //TODO: Doppler Options??
 

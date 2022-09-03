@@ -50,14 +50,14 @@ namespace Hermes
 
                 if (m_instanceGroup.EventInstances != null)
                 {
-                    //We found a valid event config, so let's use those events.
+                    //We found a valid event config, so let's use those instances.
                     m_initialized = true;
                     m_instanceGroup.NumberOfConfigsUsing++;
                     return;
                 }
                 else
                 {
-                    //We didn't find a valid config so we must be the first emitter using this FMOD event. Let's create the events as normal.
+                    //We didn't find a valid config so we must be the first emitter using this FMOD event. Let's create the event instances.
                 }
             }
 

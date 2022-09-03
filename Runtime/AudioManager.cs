@@ -19,7 +19,7 @@ namespace Hermes
 
         private List<EventConfiguration> m_allEventsConfigsInitialized = new List<EventConfiguration>();
 
-        public void SubscribeEvent (EventConfiguration eventConfiguration)
+        public void SubscribeEvent(EventConfiguration eventConfiguration)
         {
             m_allEventsConfigsInitialized.Add(eventConfiguration);
         }
@@ -67,7 +67,7 @@ namespace Hermes
         {
             foreach (EventConfiguration eventConfiguration in m_allEventsConfigsInitialized)
             {
-                if (eventConfiguration.EventRef.Path == path) //We already initialized 
+                if (eventConfiguration.EventRef.Path == path) //We already initialized this event path 
                 {
                     return eventConfiguration.Provider.EventInstancesGroup;
                 }
