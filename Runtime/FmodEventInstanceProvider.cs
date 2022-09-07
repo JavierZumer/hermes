@@ -148,7 +148,7 @@ namespace Hermes
             for (int i = 0; i < m_instanceGroup.EventInstances.Length; i++)
             {
                 EventInstance instance = m_instanceGroup.EventInstances[i];
-                RuntimeManager.DetachInstanceFromGameObject(instance);
+                RuntimeManager.DetachInstanceFromGameObject(instance); //Detaches normal (non kinetic) FMOD instances.
                 instance.release();
                 instance.clearHandle();
             }

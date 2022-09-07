@@ -25,7 +25,9 @@ namespace Hermes
         {
             base.Awake();
             InitializeEventConfiguration(m_eventConfiguration);
+            Play(m_eventConfiguration,transform);
         }
+
     }
 }
 

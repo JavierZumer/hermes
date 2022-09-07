@@ -138,7 +138,7 @@ public class EventConfigurationDrawer : PropertyDrawer
             snapheight += 4;
         }
 
-        if (m_eventConfiguration !=  null && m_eventConfiguration.HighlightSnapshot.Path.StartsWith("event:/"))
+        if (m_eventConfiguration != null && !m_eventConfiguration.HighlightSnapshot.IsNull && m_eventConfiguration.HighlightSnapshot.Path.StartsWith("event:/"))
         {
             //Do things.
             DrawSnapshotHelpBox(drawArea, 1);

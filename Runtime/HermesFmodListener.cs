@@ -8,8 +8,8 @@ namespace Hermes
     [AddComponentMenu("Hermes/FMOD Studio Listener")]
     public class HermesFmodListener : StudioListener
     {
-        //[SerializeField]
-        private GameObject attenuationObject;
+        //[SerializeField] TODO: We are exposing the parent attenuation object but using the child attenuation object on the code below...
+        //private GameObject attenuationObject;
 
         private Rigidbody rigidBody;
         private Rigidbody2D rigidBody2D;
@@ -107,23 +107,23 @@ namespace Hermes
 
             if (rigidBody)
             {
-                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody, attenuationObject);
+                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody);
             }
             else if (rigidBody2D)
             {
-                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody2D, attenuationObject);
+                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody2D);
             }
             else
             {
-                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, attenuationObject);
+                SetKinematicListenerLocation(ListenerNumber, gameObject, m_kinematicVelocity);
             }
         }
 
-        public static void SetKinematicListenerLocation(int listenerIndex, GameObject gameObject, VelocityVector3 kinematicVelocity, GameObject attenuationObject = null)
+        public void SetKinematicListenerLocation(int listenerIndex, GameObject gameObject, VelocityVector3 kinematicVelocity, GameObject attenuationObject = null)
         {
             if (attenuationObject)
             {
-                RuntimeManager.StudioSystem.setListenerAttributes(listenerIndex, ToKinematic3DAttributes(gameObject.transform,kinematicVelocity), RuntimeUtils.ToFMODVector(attenuationObject.transform.position));
+                RuntimeManager.StudioSystem.setListenerAttributes(listenerIndex, ToKinematic3DAttributes(gameObject.transform, kinematicVelocity), RuntimeUtils.ToFMODVector(attenuationObject.transform.position));
             }
             else
             {

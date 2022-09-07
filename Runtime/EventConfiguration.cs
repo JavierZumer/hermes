@@ -90,7 +90,7 @@ namespace Hermes
             }
             set
             {
-                value = m_provider;
+                m_provider = value;
             }
         }
 
@@ -138,6 +138,13 @@ namespace Hermes
             {
                 return;
             }
+            EditorInstance.getPlaybackState(out PLAYBACK_STATE state);
+
+            if (state == PLAYBACK_STATE.PLAYING || state == PLAYBACK_STATE.STARTING)
+            {
+                return;
+            }
+
             EditorInstance = EditorFmodSystem.PreviewEvent(EventRef);
         }
 
