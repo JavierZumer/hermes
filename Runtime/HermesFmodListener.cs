@@ -6,15 +6,15 @@ using UnityEngine;
 namespace Hermes
 {
     [AddComponentMenu("Hermes/FMOD Studio Listener")]
-    public class HermesFmodListener : StudioListener
+    public class HermesFmodListener : MonoBehaviour
     {
-        //[SerializeField] TODO: We are exposing the parent attenuation object but using the child attenuation object on the code below...
-        //private GameObject attenuationObject;
+        [SerializeField]
+        private GameObject attenuationObject;
 
         private Rigidbody rigidBody;
         private Rigidbody2D rigidBody2D;
 
-        private static List<StudioListener> listeners = new List<StudioListener>();
+        private static List<HermesFmodListener> listeners = new List<HermesFmodListener>();
         private VelocityVector3 m_kinematicVelocity = null;
         private Vector3 m_positionLastFrame;
 
@@ -44,7 +44,7 @@ namespace Hermes
             return result;
         }
 
-        private static void AddListener(StudioListener listener)
+        private static void AddListener(HermesFmodListener listener)
         {
             // Is the listener already in the list?
             if (listeners.Contains(listener))
@@ -63,7 +63,7 @@ namespace Hermes
             RuntimeManager.StudioSystem.setNumListeners(Mathf.Clamp(listeners.Count, 1, FMOD.CONSTANTS.MAX_LISTENERS));
         }
 
-        private static void RemoveListener(StudioListener listener)
+        private static void RemoveListener(HermesFmodListener listener)
         {
             listeners.Remove(listener);
             RuntimeManager.StudioSystem.setNumListeners(Mathf.Clamp(listeners.Count, 1, FMOD.CONSTANTS.MAX_LISTENERS));
@@ -107,15 +107,15 @@ namespace Hermes
 
             if (rigidBody)
             {
-                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody);
+                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody, attenuationObject);
             }
             else if (rigidBody2D)
             {
-                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody2D);
+                RuntimeManager.SetListenerLocation(ListenerNumber, gameObject, rigidBody2D, attenuationObject);
             }
             else
             {
-                SetKinematicListenerLocation(ListenerNumber, gameObject, m_kinematicVelocity);
+                SetKinematicListenerLocation(ListenerNumber, gameObject, m_kinematicVelocity, attenuationObject);
             }
         }
 

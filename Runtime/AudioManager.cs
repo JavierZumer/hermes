@@ -17,7 +17,38 @@ namespace Hermes
         //Banks to load on start.
         [BankRef] public string[] BanksToLoadOnGameStart;
 
+        [SerializeField]
+        [Range(1f, 30f)]
+        [Tooltip("Unused instances will be cleaned up this often (seconds).")]
+        public float m_cleanUpFrequency = 10f;
+
+        private float m_cleanUpTimer = 0f;
+
         private List<EventConfiguration> m_allEventsConfigsInitialized = new List<EventConfiguration>();
+        private List<EventConfiguration> m_eventsToRelease = new List<EventConfiguration>();
+
+        void Update()
+        {
+            if (m_cleanUpTimer >= m_cleanUpFrequency)
+            {
+                for (int i = 0; i < m_eventsToRelease.Count; i++)
+                {
+                    if (!m_eventsToRelease[i].Provider.IsAnyInstancePlaying)
+                    {
+                        TryToReleaseEvent(m_eventsToRelease[i]);
+                    }
+                }
+
+                if (m_eventsToRelease.Count > 0)
+                {
+                    m_eventsToRelease.Clear();
+                }
+
+                m_cleanUpTimer = 0.0f;
+            }
+
+            m_cleanUpTimer += Time.unscaledDeltaTime;
+        }
 
         public void SubscribeEvent(EventConfiguration eventConfiguration)
         {
@@ -27,6 +58,16 @@ namespace Hermes
         public void UnsubscribeEvent(EventConfiguration eventConfiguration)
         {
             m_allEventsConfigsInitialized.Remove(eventConfiguration);
+        }
+
+        public void SubscribeReleaseEvent(EventConfiguration eventConfiguration)
+        {
+            m_eventsToRelease.Add(eventConfiguration);
+        }
+
+        public void UnsubscribeReleaseEvent(EventConfiguration eventConfiguration)
+        {
+            m_eventsToRelease.Remove(eventConfiguration);
         }
 
         /// <summary>
@@ -75,7 +116,7 @@ namespace Hermes
             return null;
         }
 
-        public void ReleaseEvent (EventConfiguration eventConfiguration)
+        public void TryToReleaseEvent (EventConfiguration eventConfiguration)
         {
             if (eventConfiguration.Provider.EventInstancesGroup.NumberOfConfigsUsing <= 1) //This is the only emitter using this, so we can clear everything.
             {

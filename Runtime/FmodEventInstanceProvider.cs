@@ -25,6 +25,23 @@ namespace Hermes
         public EventInstance[] EventInstances => m_instanceGroup.EventInstances;
         public EventInstancesGroup EventInstancesGroup => m_instanceGroup;
 
+        public bool IsAnyInstancePlaying
+        {
+            get
+            {
+                foreach (EventInstance instance in EventInstances)
+                {
+                    PLAYBACK_STATE state;
+                    if (instance.isValid())
+                    {
+                        instance.getPlaybackState(out state);
+                        return state != PLAYBACK_STATE.STOPPED && state != PLAYBACK_STATE.STOPPING;
+                    }
+                }
+                return false;
+            }
+        }
+
         //Constructor
         public FmodEventInstanceProvider(EventConfiguration eventConfiguration)
         {

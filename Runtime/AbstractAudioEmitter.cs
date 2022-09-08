@@ -49,7 +49,6 @@ namespace Hermes
             {
                 UpdateKinematicVelocity();
                 UpdateInstancesVelocities();
-                //Debug.LogError($"Speed is {m_kinematicVelocity.Magnitude}");
             }
         }
 
@@ -101,6 +100,7 @@ namespace Hermes
             }
 
             eventConfiguration.Provider.GetNextInstance().start();
+            ManageRelease(eventConfiguration);
         }
 
         //Play 3D Attached to GameObject
@@ -144,10 +144,7 @@ namespace Hermes
             else if (eventConfiguration.CalculateKinematicVelocity) //No rigidbody AND we want to calculate kinematic velocity
             {
                 m_kinematicVelocity = new VelocityVector3();
-                eventConfiguration.transform = transform;
-                //RuntimeManager.AttachInstanceToGameObject(eventInstance, transform);
-                AttachKineticInstanceToGameObject(eventInstance, transform, m_kinematicVelocity);
-                //eventInstance.set3DAttributes(ToKinematic3DAttributes(transform, m_kinematicVelocity)); //Set velocity and position just before we play.
+                AttachKineticInstanceToGameObject(eventInstance, transform, m_kinematicVelocity, eventConfiguration); //Set velocity and position just before we play.
             }
             else
             {
@@ -155,6 +152,7 @@ namespace Hermes
             }
 
             eventInstance.start();
+            ManageRelease(eventConfiguration);
         }
 
         //Play 3D on a position
@@ -177,9 +175,11 @@ namespace Hermes
             EventInstance eventInstance = eventConfiguration.Provider.GetNextInstance();
             eventInstance.set3DAttributes(position.To3DAttributes());
             eventInstance.start();
+
+            ManageRelease(eventConfiguration);
         }
 
-        private void AttachKineticInstanceToGameObject(FMOD.Studio.EventInstance instance, Transform transform, VelocityVector3 kinematicVelocity)
+        private void AttachKineticInstanceToGameObject(FMOD.Studio.EventInstance instance, Transform transform, VelocityVector3 kinematicVelocity, EventConfiguration eventConfiguration)
         {
             KineticAttachedInstance attachedInstance = m_kineticAttachedInstances.Find(x => x.Instance.handle == instance.handle);
             if (attachedInstance == null)
@@ -193,19 +193,33 @@ namespace Hermes
             attachedInstance.Instance = instance;
             attachedInstance.VelocityVector3 = kinematicVelocity;
             attachedInstance.UseKinematicVelocity = true;
+            attachedInstance.EventConfiguration = eventConfiguration;
         }
 
-        private void DetachKineticInstanceFromGameObject(FMOD.Studio.EventInstance instance)
+        private void DetachKineticInstanceFromGameObject(EventConfiguration eventConfiguration)
         {
-            //var manager = Instance;
             for (int i = 0; i < m_kineticAttachedInstances.Count; i++)
             {
-                if (m_kineticAttachedInstances[i].Instance.handle == instance.handle)
+                if (m_kineticAttachedInstances[i].EventConfiguration == eventConfiguration)
                 {
                     m_kineticAttachedInstances[i] = m_kineticAttachedInstances[m_kineticAttachedInstances.Count - 1];
                     m_kineticAttachedInstances.RemoveAt(m_kineticAttachedInstances.Count - 1);
-                    return;
                 }
+            }
+        }
+
+        private void ManageRelease(EventConfiguration eventConfiguration)
+        {
+            if (eventConfiguration.EventReleaseMode == EventReleaseMode.AsSoonAsWePlay)
+            {
+                ReleaseEvent(eventConfiguration);
+            }
+
+            if (eventConfiguration.EventReleaseMode == EventReleaseMode.WhenAudioFinishes)
+            {
+                m_audioManager.SubscribeReleaseEvent(eventConfiguration);
+                //In theory, we would need a way to detach a kinetic event here when it has finished.
+                //But the update method on this class should take care of that as soon as all the instances are stopped??
             }
         }
 
@@ -233,16 +247,12 @@ namespace Hermes
 
         protected void ReleaseEvent(EventConfiguration eventConfiguration)
         {
-            m_audioManager.ReleaseEvent(eventConfiguration);
+            m_audioManager.TryToReleaseEvent(eventConfiguration);
 
-            //If the event config was kinetic, we make sure we dettach the instances from the local emiter kinetic list.
+            //If the event config was kinetic, we make sure we dettach the instances.
             if (eventConfiguration.CalculateKinematicVelocity)
             {
-
-                for (int i = 0; i < m_kineticAttachedInstances.Count; i++)
-                {
-                    DetachKineticInstanceFromGameObject(m_kineticAttachedInstances[i].Instance);
-                }
+                DetachKineticInstanceFromGameObject(eventConfiguration);
             }
         }
 
@@ -254,6 +264,11 @@ namespace Hermes
             }
         }
 
+        protected virtual bool IsEventPlaying(EventConfiguration eventConfiguration)
+        {
+           return eventConfiguration.Provider.IsAnyInstancePlaying;
+        }
+
         protected virtual void OnDestroy()
         {
             StopAllEventsOnEmitter();
@@ -261,7 +276,7 @@ namespace Hermes
         }
 
         //Utilities
-        private bool IsEvent3D(EventConfiguration eventConfiguration)
+        protected virtual bool IsEvent3D(EventConfiguration eventConfiguration)
         {
             eventConfiguration.EventDescription.is3D(out bool is3D);
             return is3D;
@@ -289,19 +304,6 @@ namespace Hermes
 
         private void UpdateInstancesVelocities()
         {
-            /*foreach (EventConfiguration eventConfiguration in m_allEvents)
-            {
-                if (eventConfiguration.CalculateKinematicVelocity)
-                {
-                    foreach (EventInstance instance in eventConfiguration.Provider.EventInstances)
-                    {
-                        //We find each instance and update its position and velocity by hand.
-                        //Keep in mind that for any other event configs, not using kinematic velocity, this is done by FMOD's RuntimeManager.
-                        instance.set3DAttributes(ToKinematic3DAttributes(eventConfiguration.transform, m_kinematicVelocity));
-                    }
-                }
-            }*/
-
             for (int i = 0; i < m_kineticAttachedInstances.Count; i++)
             {
                 FMOD.Studio.PLAYBACK_STATE playbackState = FMOD.Studio.PLAYBACK_STATE.STOPPED;
@@ -355,19 +357,12 @@ namespace Hermes
         public float x = 0;
         public float y = 0;
         public float z = 0;
-
-        public float Magnitude
-        {
-            get
-            {
-                return x * x + y * y + z * z;
-            }
-        }
     }
 
     public class KineticAttachedInstance
     {
         public FMOD.Studio.EventInstance Instance;
+        public EventConfiguration EventConfiguration;
         public Transform Transform;
         public VelocityVector3 VelocityVector3;
         public bool UseKinematicVelocity;
