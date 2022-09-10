@@ -129,7 +129,13 @@ namespace Hermes
 
         public bool CalculateKinematicVelocity;
 
-        //TODO: Doppler Options??
+        public EventConfiguration ThisClassInstance
+        {
+            get
+            {
+                return this;
+            }
+        }
 
         public void PlayEventInEditor()
         {
@@ -137,6 +143,7 @@ namespace Hermes
             {
                 return;
             }
+
             EditorInstance.getPlaybackState(out PLAYBACK_STATE state);
 
             if (state == PLAYBACK_STATE.PLAYING || state == PLAYBACK_STATE.STARTING)
@@ -153,6 +160,7 @@ namespace Hermes
             {
                 return;
             }
+
             EditorFmodSystem.PreviewStop(EditorInstance, AllowFadeOutWhenStopping ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE);
         }
     }

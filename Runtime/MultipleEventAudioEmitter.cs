@@ -1,35 +1,59 @@
-using FMODUnity;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace Hermes
 {
-    public class SimpleAudioEmitter : AbstractAudioEmitter
+    [Serializable]
+    public class MultipleEventField
     {
-        public enum PlayMethod3D
+        public string Name
+        {
+            get
+            {
+                if (!m_eventConfiguration.EventRef.IsNull)
+                {
+                    return m_eventConfiguration.EventRef.Path;
+                }
+                return "Event.";
+            }
+        }
+
+        private enum PlayMethod3D
         {
             AttachToGameObject,
             PlayOnPosition,
         }
 
-        [SerializeField][Tooltip("If the event is 3D you can choose to play it attached to a game object or just in a position.")]
+        [SerializeField]
+        [Tooltip("If the event is 3D you can choose to play it attached to a game object or just in a position.")]
         private PlayMethod3D m_play3DType = PlayMethod3D.AttachToGameObject;
 
-        [SerializeField][Tooltip("Choose an specific transform to play the audio on.")]
+        [SerializeField]
+        [Tooltip("Choose an specific transform to play the audio on.")]
         private Transform m_customTransform;
 
         [SerializeField]
         private EventConfiguration m_eventConfiguration;
+    }
+
+    public class MultipleEventAudioEmitter : AbstractAudioEmitter
+    {
+
+        /*[SerializeField]
+        private EventConfiguration m_eventConfiguration;*/
+
+        [SerializeField]
+        private List<MultipleEventField> m_events = new List<MultipleEventField>();
 
         protected override void Awake()
         {
             base.Awake();
-            InitializeEventConfiguration(m_eventConfiguration);
-            Play(); //REMOVE
+            //InitializeEventConfiguration(m_eventConfiguration);
         }
 
-        public void Play()
+        /*public void Play()
         {
             if (!IsEvent3D(m_eventConfiguration))
             {
@@ -51,7 +75,7 @@ namespace Hermes
             {
                 Stop(m_eventConfiguration);
             }
-        }
+        }*/
 
         /// <summary>
         /// Call this method from outside to update parameters when needed.

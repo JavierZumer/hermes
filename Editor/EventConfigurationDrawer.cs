@@ -8,6 +8,8 @@ using FMODUnity;
 using FMOD.Studio;
 using FMOD;
 using Debug = UnityEngine.Debug;
+using System.Linq;
+using System.Reflection;
 
 [CustomPropertyDrawer(typeof(EventConfiguration))]
 public class EventConfigurationDrawer : PropertyDrawer
@@ -44,8 +46,32 @@ public class EventConfigurationDrawer : PropertyDrawer
     //Draw on Inspector Window
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
-        //Ref to parent script
-        m_eventConfiguration = (EventConfiguration)fieldInfo.GetValue(property.serializedObject.targetObject);
+        //Get a reference to the parent EventConfig instance. This can return a list or array too.
+        /*var tempref = fieldInfo.GetValue(property.serializedObject.targetObject);
+
+        //If we got more than one instance, find its index.
+        string str = property.displayName;
+        str = str.Substring(str.Length - 1);
+        int index = 0;
+        Int32.TryParse(str, out index);
+
+        //Now assign the EventConfiguration reference for each case.
+        if (tempref is List<EventConfiguration>)
+        {
+            var list = tempref as List<EventConfiguration>;
+            m_eventConfiguration = (EventConfiguration)list[index];
+        }
+        else if (tempref is Array)
+        {
+            var niceArray = tempref as EventConfiguration[];
+            m_eventConfiguration = (EventConfiguration)niceArray[index];
+        }
+        else
+        {
+            m_eventConfiguration = (EventConfiguration)tempref;
+        }*/
+
+        m_eventConfiguration = GetTargetObjectOfProperty(property) as EventConfiguration;
 
         //Start the property
         EditorGUI.BeginProperty(position, label, property);
@@ -70,6 +96,10 @@ public class EventConfigurationDrawer : PropertyDrawer
         //Draw the first property.
         DrawEventReference(position,1);
 
+        //TODO: PropertyDrawers are always static (shared by all instances) so I can't rely on storing local variables for calculating height.
+        //I could use serialized properties from the mother class to keep track of all the height stuff or...
+        //I could try this: https://answers.unity.com/questions/1468063/propertydrawer-local-members-behave-like-static-me.html
+
         /* //Check if we need to update our global events dictionary
         if (m_eventConfiguration.LastEventPath != m_eventConfiguration.EventPath || m_shareInstances.boolValue != m_eventConfiguration.LastShareInstances) 
         {
@@ -77,7 +107,7 @@ public class EventConfigurationDrawer : PropertyDrawer
             m_eventConfiguration.LastShareInstances = m_shareInstances.boolValue;
             m_globalWarning = UpdateGlobalEvents();
         }*/
-        
+
         //After drawing the last property, end the Property wrapper.
         EditorGUI.EndProperty();
     }
@@ -95,7 +125,7 @@ public class EventConfigurationDrawer : PropertyDrawer
             refheight = +6;
         }
 
-        if (!m_eventConfiguration.EventRef.Guid.IsNull)
+        if (m_eventConfiguration != null && !m_eventConfiguration.EventRef.Guid.IsNull)
         {
             m_showTransportButtons = true;
             DrawPlayAndStopButtons(drawArea, refheight);
@@ -330,9 +360,9 @@ public class EventConfigurationDrawer : PropertyDrawer
     //Set property height
     public override float GetPropertyHeight(SerializedProperty property, GUIContent label)
     {
-        //Instead of doing this, as for each property height and return that?
+        //Instead of doing this, ask for each property height and return that?
 
-        int numberOfLines = 16;
+        float numberOfLines = EditorGUI.GetPropertyHeight(property);
 
         if (m_referenceFieldExpanded)
         {
@@ -364,6 +394,95 @@ public class EventConfigurationDrawer : PropertyDrawer
             numberOfLines += 7;
         }
 
-        return EditorGUIUtility.singleLineHeight * numberOfLines;
+        //Debug.LogError($"Total lines are {numberOfLines}");
+        return numberOfLines * EditorGUIUtility.singleLineHeight;
+    }
+
+    /// <summary>
+    /// Gets the object the property represents. 
+    /// CREDITS: 
+    /// https://github.com/lordofduct/spacepuppy-unity-framework/blob/master/SpacepuppyBaseEditor/EditorHelper.cs
+    /// https://forum.unity.com/threads/getting-non-serialized-data-in-custom-property-drawer.452526/#post-2933574
+    /// </summary>
+    /// <param name="prop"></param>
+    /// <returns></returns>
+    public static object GetTargetObjectOfProperty(SerializedProperty prop)
+    {
+        if (prop == null) return null;
+
+        var path = prop.propertyPath.Replace(".Array.data[", "[");
+        object obj = prop.serializedObject.targetObject;
+        var elements = path.Split('.');
+        foreach (var element in elements)
+        {
+            if (element.Contains("["))
+            {
+                var elementName = element.Substring(0, element.IndexOf("["));
+                var index = System.Convert.ToInt32(element.Substring(element.IndexOf("[")).Replace("[", "").Replace("]", ""));
+                obj = GetValue_Imp(obj, elementName, index);
+            }
+            else
+            {
+                obj = GetValue_Imp(obj, element);
+            }
+        }
+        return obj;
+    }
+
+    public static object GetTargetObjectOfProperty(SerializedProperty prop, object targetObj)
+    {
+        var path = prop.propertyPath.Replace(".Array.data[", "[");
+        var elements = path.Split('.');
+        foreach (var element in elements)
+        {
+            if (element.Contains("["))
+            {
+                var elementName = element.Substring(0, element.IndexOf("["));
+                var index = System.Convert.ToInt32(element.Substring(element.IndexOf("[")).Replace("[", "").Replace("]", ""));
+                targetObj = GetValue_Imp(targetObj, elementName, index);
+            }
+            else
+            {
+                targetObj = GetValue_Imp(targetObj, element);
+            }
+        }
+        return targetObj;
+    }
+
+    private static object GetValue_Imp(object source, string name)
+    {
+        if (source == null)
+            return null;
+        var type = source.GetType();
+
+        while (type != null)
+        {
+            var f = type.GetField(name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
+            if (f != null)
+                return f.GetValue(source);
+
+            var p = type.GetProperty(name, BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (p != null)
+                return p.GetValue(source, null);
+
+            type = type.BaseType;
+        }
+        return null;
+    }
+
+    private static object GetValue_Imp(object source, string name, int index)
+    {
+        var enumerable = GetValue_Imp(source, name) as System.Collections.IEnumerable;
+        if (enumerable == null) return null;
+        var enm = enumerable.GetEnumerator();
+        //while (index-- >= 0)
+        //    enm.MoveNext();
+        //return enm.Current;
+
+        for (int i = 0; i <= index; i++)
+        {
+            if (!enm.MoveNext()) return null;
+        }
+        return enm.Current;
     }
 }
