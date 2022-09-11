@@ -43,6 +43,7 @@ public class EventConfigurationDrawer : PropertyDrawer
         public bool referenceFieldExpanded;
         public bool snapshotFieldExpanded;
         public bool polyphonic;
+        public float accumulatedHeight;
     }
 
     Dictionary<string, ViewData> m_PerPropertyViewData = new Dictionary<string, ViewData>();
@@ -50,6 +51,9 @@ public class EventConfigurationDrawer : PropertyDrawer
     //Draw on Inspector Window
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
     {
+
+        //Debug.LogError($"On GUI NOW!");
+
         //Get a reference to the parent EventConfig instance. This can return a list or array too.
         /*var tempref = fieldInfo.GetValue(property.serializedObject.targetObject);
 
@@ -82,6 +86,8 @@ public class EventConfigurationDrawer : PropertyDrawer
             m_PerPropertyViewData[property.propertyPath] = viewData;
         }
 
+        viewData.accumulatedHeight = 0f;
+
         m_eventConfiguration = GetTargetObjectOfProperty(property) as EventConfiguration;
 
         //Start the property
@@ -103,13 +109,14 @@ public class EventConfigurationDrawer : PropertyDrawer
 
         Rect drawMainLabel = new Rect(position.min.x, position.min.y, position.size.x, lineHeight);
         EditorGUI.LabelField(drawMainLabel, new GUIContent("Event Configuration"),EditorStyles.boldLabel);
+        viewData.accumulatedHeight += lineHeight;
 
         //Draw the first property.
         DrawEventReference(position, 1 , viewData);
 
-        //TODO: PropertyDrawers are always static (shared by all instances) so I can't rely on storing local variables for calculating height.
-        //I could use serialized properties from the mother class to keep track of all the height stuff or...
-        //I could try this: https://answers.unity.com/questions/1468063/propertydrawer-local-members-behave-like-static-me.html
+        //TODO: Figure out how to re-draw the editor when you change an event path, even without clicking any buttons.
+        //This seems to work well on a single EventConfig instance but breaks on the MultipleEvent emitter. Maybe I need to add some extra refresh there?
+        //Try this? https://answers.unity.com/questions/1469928/custom-editorcustom-property-drawer-combo-breaks-e.html
 
         /* //Check if we need to update our global events dictionary
         if (m_eventConfiguration.LastEventPath != m_eventConfiguration.EventPath || m_shareInstances.boolValue != m_eventConfiguration.LastShareInstances) 
@@ -143,7 +150,9 @@ public class EventConfigurationDrawer : PropertyDrawer
         }
         else
         {
+            m_eventConfiguration.StopEventInEditor();
             viewData.showTransportButtons = false;
+            viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_eventReference);
             DrawHighlightSnapshot(drawArea, 2, viewData);
         }
     }
@@ -163,6 +172,8 @@ public class EventConfigurationDrawer : PropertyDrawer
         {
             m_eventConfiguration.StopEventInEditor();
         }
+
+        viewData.accumulatedHeight += lineHeight;
         DrawHighlightSnapshot(drawArea, 1, viewData);
     }
 
@@ -181,13 +192,15 @@ public class EventConfigurationDrawer : PropertyDrawer
 
         if (m_eventConfiguration != null && !m_eventConfiguration.HighlightSnapshot.IsNull && m_eventConfiguration.HighlightSnapshot.Path.StartsWith("event:/"))
         {
-            //Do things.
-            DrawSnapshotHelpBox(drawArea, 1, viewData);
+            snapheight -= 1;
+            DrawSnapshotHelpBox(drawArea, snapheight, viewData);
         }
         else
         {
             DrawInstancesLabel(drawArea, snapheight, viewData);
         }
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_highlightSnaphsot);
     }
 
     private void DrawSnapshotHelpBox(Rect position, int height, ViewData viewData)
@@ -195,6 +208,7 @@ public class EventConfigurationDrawer : PropertyDrawer
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.HelpBox(drawArea, "You need to select a snapshot here, not an event!", MessageType.Error);
         DrawInstancesLabel(drawArea, 1, viewData);
+        viewData.accumulatedHeight += lineHeight;
     }
 
     private void DrawInstancesLabel(Rect position, int height, ViewData viewData)
@@ -202,6 +216,7 @@ public class EventConfigurationDrawer : PropertyDrawer
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.LabelField(drawArea, new GUIContent("-- Instance Management --"), EditorStyles.boldLabel);
         DrawInstanceSharing(drawArea, 1, viewData);
+        viewData.accumulatedHeight += lineHeight;
     }
 
     private void DrawInstanceSharing(Rect position, int height, ViewData viewData)
@@ -219,6 +234,8 @@ public class EventConfigurationDrawer : PropertyDrawer
             viewData.shareInstancesWarning = false;
             DrawInstanceInitialization(drawArea, 1, viewData);
         }
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_shareInstances);
     }
 
     private void DrawGlobalWarning(Rect position, int height, ViewData viewData)
@@ -229,6 +246,7 @@ public class EventConfigurationDrawer : PropertyDrawer
 
         viewData.shareInstancesWarning = true;
         DrawInstanceInitialization(drawArea, 4, viewData);
+        viewData.accumulatedHeight += lineHeight*4;
     }
 
     private void DrawInstanceInitialization(Rect position, int height, ViewData viewData)
@@ -236,6 +254,8 @@ public class EventConfigurationDrawer : PropertyDrawer
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_eventInitializationMode, new GUIContent("Instance Initialization"));
         DrawPolyphonyMode(drawArea, 1, viewData);
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_eventInitializationMode);
     }
 
     //TODO: Unused for now, try to find a way to indicate to user global instance re-use in a more clear way.
@@ -301,12 +321,16 @@ public class EventConfigurationDrawer : PropertyDrawer
             viewData.polyphonic = false;
             DrawInstanceRelease(drawArea, 1, viewData);
         }
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_polyphonyModes);
     }
 
     private void DrawNumberOfVoices(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
         m_numberOfVoices.intValue = EditorGUI.IntSlider(drawArea, new GUIContent("Number Of Instances"), m_numberOfVoices.intValue, 2, 30);
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_numberOfVoices);
     }
 
     private void DrawVoiceStealing(Rect position, int height, ViewData viewData)
@@ -314,6 +338,8 @@ public class EventConfigurationDrawer : PropertyDrawer
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
         EditorGUI.PropertyField(drawArea, m_stealingMode, new GUIContent("Emitter Voice Stealing"));
         DrawInstanceRelease(drawArea, 1, viewData);
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_stealingMode);
     }
 
     private void DrawInstanceRelease(Rect position, int height, ViewData viewData)
@@ -321,6 +347,8 @@ public class EventConfigurationDrawer : PropertyDrawer
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_eventReleaseMode, new GUIContent("Instance Release"));
         DrawOtherOptionsLabel(drawArea, 1, viewData);
+
+        viewData.accumulatedHeight += EditorGUI.GetPropertyHeight(m_eventReleaseMode);
     }
 
     private void DrawOtherOptionsLabel(Rect position, int height, ViewData viewData)
@@ -331,6 +359,11 @@ public class EventConfigurationDrawer : PropertyDrawer
         if (viewData.otherOptions)
         {
             DrawPreloadSampleData(drawArea, 1, viewData);
+            viewData.accumulatedHeight += lineHeight*8;
+        }
+        else
+        {
+            viewData.accumulatedHeight += lineHeight;
         }
     }
 
@@ -373,6 +406,8 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         //Instead of doing this, ask for each property height and return that?
 
+        //Debug.LogError($"Drawing NOW!");
+
         ViewData viewData;
         if (!m_PerPropertyViewData.TryGetValue(property.propertyPath, out viewData))
         {
@@ -380,7 +415,7 @@ public class EventConfigurationDrawer : PropertyDrawer
             m_PerPropertyViewData[property.propertyPath] = viewData;
         }
 
-        //float numberOfLines = EditorGUI.GetPropertyHeight(property);
+        //float numberOfLines = EditorGUI.GetPropertyHeight(property,true);
         float numberOfLines = 16;
 
         if (viewData.referenceFieldExpanded)
@@ -388,9 +423,9 @@ public class EventConfigurationDrawer : PropertyDrawer
             numberOfLines += 4;
         }
 
-        if(viewData.showTransportButtons)
+        if (viewData.showTransportButtons)
         {
-            numberOfLines += 2;
+            numberOfLines += 1;
         }
 
         if (viewData.snapshotFieldExpanded)
@@ -413,9 +448,13 @@ public class EventConfigurationDrawer : PropertyDrawer
             numberOfLines += 8;
         }
 
-        //Debug.LogError($"Total lines are {numberOfLines}");
-        return numberOfLines * EditorGUIUtility.singleLineHeight;
+        //float num = EditorGUI.GetPropertyHeight(m_highlightSnaphsot);
+        //Debug.LogError($"Total lines are {viewData.accumulatedHeight / lineHeight}");
+        //return numberOfLines * EditorGUIUtility.singleLineHeight;
+        return numberOfLines * lineHeight;
     }
+
+
 
     /// <summary>
     /// Gets the object the property represents. 

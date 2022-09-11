@@ -16,7 +16,7 @@ namespace Hermes
                 {
                     return m_eventConfiguration.EventRef.Path;
                 }
-                return "Event.";
+                return "No Event";
             }
         }
 

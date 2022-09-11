@@ -156,10 +156,10 @@ namespace Hermes
 
         public void StopEventInEditor()
         {
-            if (String.IsNullOrEmpty(EventPath))
+            /*if (String.IsNullOrEmpty(EventPath))
             {
                 return;
-            }
+            }*/
 
             EditorFmodSystem.PreviewStop(EditorInstance, AllowFadeOutWhenStopping ? FMOD.Studio.STOP_MODE.ALLOWFADEOUT : FMOD.Studio.STOP_MODE.IMMEDIATE);
         }
