@@ -28,20 +28,24 @@ public class EventConfigurationDrawer : PropertyDrawer
     private SerializedProperty m_stopMaxDistance;
     private SerializedProperty m_calculateKinematicVelocity;
 
-    //Optional fields bool
-    private bool m_showTransportButtons;
-    private bool m_otherOptions;
-    private bool m_shareInstancesWarning;
-    private bool m_referenceFieldExpanded;
-    private bool m_snapshotFieldExpanded;
-    private bool m_polyphonic;
-
     EventConfiguration m_eventConfiguration;
 
     private readonly float lineHeight = EditorGUIUtility.singleLineHeight;
 
     //We keep an static reference to global events and how many emitters are using them.
     private static Dictionary<string, int> m_globalEvents = new Dictionary<string, int>();
+
+    class ViewData
+    {
+        public bool showTransportButtons;
+        public bool otherOptions;
+        public bool shareInstancesWarning;
+        public bool referenceFieldExpanded;
+        public bool snapshotFieldExpanded;
+        public bool polyphonic;
+    }
+
+    Dictionary<string, ViewData> m_PerPropertyViewData = new Dictionary<string, ViewData>();
 
     //Draw on Inspector Window
     public override void OnGUI(Rect position, SerializedProperty property, GUIContent label)
@@ -71,6 +75,13 @@ public class EventConfigurationDrawer : PropertyDrawer
             m_eventConfiguration = (EventConfiguration)tempref;
         }*/
 
+        ViewData viewData;
+        if (!m_PerPropertyViewData.TryGetValue(property.propertyPath, out viewData))
+        {
+            viewData = new ViewData();
+            m_PerPropertyViewData[property.propertyPath] = viewData;
+        }
+
         m_eventConfiguration = GetTargetObjectOfProperty(property) as EventConfiguration;
 
         //Start the property
@@ -94,7 +105,7 @@ public class EventConfigurationDrawer : PropertyDrawer
         EditorGUI.LabelField(drawMainLabel, new GUIContent("Event Configuration"),EditorStyles.boldLabel);
 
         //Draw the first property.
-        DrawEventReference(position,1);
+        DrawEventReference(position, 1 , viewData);
 
         //TODO: PropertyDrawers are always static (shared by all instances) so I can't rely on storing local variables for calculating height.
         //I could use serialized properties from the mother class to keep track of all the height stuff or...
@@ -112,33 +123,33 @@ public class EventConfigurationDrawer : PropertyDrawer
         EditorGUI.EndProperty();
     }
 
-    private void DrawEventReference(Rect position, int height)
+    private void DrawEventReference(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_eventReference, new GUIContent("Event Reference"), false);
-        m_referenceFieldExpanded = m_eventReference.isExpanded;
+        viewData.referenceFieldExpanded = m_eventReference.isExpanded;
 
         int refheight = 2;
 
-        if (m_referenceFieldExpanded)
+        if (viewData.referenceFieldExpanded)
         {
             refheight = +6;
         }
 
         if (m_eventConfiguration != null && !m_eventConfiguration.EventRef.Guid.IsNull)
         {
-            m_showTransportButtons = true;
-            DrawPlayAndStopButtons(drawArea, refheight);
+            viewData.showTransportButtons = true;
+            DrawPlayAndStopButtons(drawArea, refheight,viewData);
         }
         else
         {
-            m_showTransportButtons = false;
-            DrawHighlightSnapshot(drawArea, 2);
+            viewData.showTransportButtons = false;
+            DrawHighlightSnapshot(drawArea, 2, viewData);
         }
     }
 
     //Add Play and Stop Buttons here?
-    private void DrawPlayAndStopButtons(Rect position, int height)
+    private void DrawPlayAndStopButtons(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height), position.size.x, lineHeight);
         Rect drawPlay = new Rect(position.min.x, position.min.y + (lineHeight * height), position.size.x*0.47f, lineHeight);
@@ -152,18 +163,18 @@ public class EventConfigurationDrawer : PropertyDrawer
         {
             m_eventConfiguration.StopEventInEditor();
         }
-        DrawHighlightSnapshot(drawArea, 1);
+        DrawHighlightSnapshot(drawArea, 1, viewData);
     }
 
-    private void DrawHighlightSnapshot(Rect position, int height)
+    private void DrawHighlightSnapshot(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_highlightSnaphsot, new GUIContent("Highlight Snapshot"));
-        m_snapshotFieldExpanded = m_highlightSnaphsot.isExpanded;
+        viewData.snapshotFieldExpanded = m_highlightSnaphsot.isExpanded;
 
         int snapheight = 2;
 
-        if (m_snapshotFieldExpanded)
+        if (viewData.snapshotFieldExpanded)
         {
             snapheight += 4;
         }
@@ -171,60 +182,60 @@ public class EventConfigurationDrawer : PropertyDrawer
         if (m_eventConfiguration != null && !m_eventConfiguration.HighlightSnapshot.IsNull && m_eventConfiguration.HighlightSnapshot.Path.StartsWith("event:/"))
         {
             //Do things.
-            DrawSnapshotHelpBox(drawArea, 1);
+            DrawSnapshotHelpBox(drawArea, 1, viewData);
         }
         else
         {
-            DrawInstancesLabel(drawArea, snapheight);
+            DrawInstancesLabel(drawArea, snapheight, viewData);
         }
     }
 
-    private void DrawSnapshotHelpBox(Rect position, int height)
+    private void DrawSnapshotHelpBox(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.HelpBox(drawArea, "You need to select a snapshot here, not an event!", MessageType.Error);
-        DrawInstancesLabel(drawArea, 1);
+        DrawInstancesLabel(drawArea, 1, viewData);
     }
 
-    private void DrawInstancesLabel(Rect position, int height)
+    private void DrawInstancesLabel(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.LabelField(drawArea, new GUIContent("-- Instance Management --"), EditorStyles.boldLabel);
-        DrawInstanceSharing(drawArea, 1);
+        DrawInstanceSharing(drawArea, 1, viewData);
     }
 
-    private void DrawInstanceSharing(Rect position, int height)
+    private void DrawInstanceSharing(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_shareInstances, new GUIContent("Share instances"));
 
         if (m_shareInstances.boolValue)
         {
-            m_shareInstancesWarning = true;
-            DrawGlobalWarning(position, 2);
+            viewData.shareInstancesWarning = true;
+            DrawGlobalWarning(position, 2, viewData);
         }
         else
         {
-            m_shareInstancesWarning = false;
-            DrawInstanceInitialization(drawArea, 1);
+            viewData.shareInstancesWarning = false;
+            DrawInstanceInitialization(drawArea, 1, viewData);
         }
     }
 
-    private void DrawGlobalWarning(Rect position, int height)
+    private void DrawGlobalWarning(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 20, position.size.x, lineHeight * 4);
         EditorGUI.HelpBox(drawArea, "Event instances will be shared by all emitters that are using this EventReference. " +
             "Make sure you give all emitters the same settings. The first one to be initialized will dictate the shared behaviour.", MessageType.Info);
 
-        m_shareInstancesWarning = true;
-        DrawInstanceInitialization(drawArea, 4);
+        viewData.shareInstancesWarning = true;
+        DrawInstanceInitialization(drawArea, 4, viewData);
     }
 
-    private void DrawInstanceInitialization(Rect position, int height)
+    private void DrawInstanceInitialization(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_eventInitializationMode, new GUIContent("Instance Initialization"));
-        DrawPolyphonyMode(drawArea, 1);
+        DrawPolyphonyMode(drawArea, 1, viewData);
     }
 
     //TODO: Unused for now, try to find a way to indicate to user global instance re-use in a more clear way.
@@ -273,85 +284,85 @@ public class EventConfigurationDrawer : PropertyDrawer
         }
     }
 
-    private void DrawPolyphonyMode(Rect position, int height)
+    private void DrawPolyphonyMode(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_polyphonyModes, new GUIContent("Instances Mode"));
 
         if (m_polyphonyModes.enumValueIndex == (int)PolyphonyMode.Polyphonic)
         {
-            m_polyphonic = true;
-            DrawNumberOfVoices(drawArea, 1);
-            DrawVoiceStealing(drawArea, 3);
+            viewData.polyphonic = true;
+            DrawNumberOfVoices(drawArea, 1, viewData);
+            DrawVoiceStealing(drawArea, 3, viewData);
         }
         else
         {
             //Is monophonic
-            m_polyphonic = false;
-            DrawInstanceRelease(drawArea, 1);
+            viewData.polyphonic = false;
+            DrawInstanceRelease(drawArea, 1, viewData);
         }
     }
 
-    private void DrawNumberOfVoices(Rect position, int height)
+    private void DrawNumberOfVoices(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
         m_numberOfVoices.intValue = EditorGUI.IntSlider(drawArea, new GUIContent("Number Of Instances"), m_numberOfVoices.intValue, 2, 30);
     }
 
-    private void DrawVoiceStealing(Rect position, int height)
+    private void DrawVoiceStealing(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, EditorGUIUtility.singleLineHeight);
         EditorGUI.PropertyField(drawArea, m_stealingMode, new GUIContent("Emitter Voice Stealing"));
-        DrawInstanceRelease(drawArea, 1);
+        DrawInstanceRelease(drawArea, 1, viewData);
     }
 
-    private void DrawInstanceRelease(Rect position, int height)
+    private void DrawInstanceRelease(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_eventReleaseMode, new GUIContent("Instance Release"));
-        DrawOtherOptionsLabel(drawArea, 1);
+        DrawOtherOptionsLabel(drawArea, 1, viewData);
     }
 
-    private void DrawOtherOptionsLabel(Rect position, int height)
+    private void DrawOtherOptionsLabel(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
-        m_otherOptions = EditorGUI.Foldout(drawArea, m_otherOptions, new GUIContent("-- Other Options --"));
+        viewData.otherOptions = EditorGUI.Foldout(drawArea, viewData.otherOptions, new GUIContent("-- Other Options --"));
 
-        if (m_otherOptions)
+        if (viewData.otherOptions)
         {
-            DrawPreloadSampleData(drawArea, 1);
+            DrawPreloadSampleData(drawArea, 1, viewData);
         }
     }
 
-    private void DrawPreloadSampleData(Rect position, int height)
+    private void DrawPreloadSampleData(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_preloadSampleData, new GUIContent("Preload Sample Data"));
-        DrawSteady(drawArea, 1);
+        DrawSteady(drawArea, 1, viewData);
     }
 
-    private void DrawSteady(Rect position, int height)
+    private void DrawSteady(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_steady, new GUIContent("Steady"));
-        DrawFadeOut(drawArea, 1);
+        DrawFadeOut(drawArea, 1, viewData);
     }
 
-    private void DrawFadeOut(Rect position, int height)
+    private void DrawFadeOut(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_allowFadeOutWhenStopping, new GUIContent("Fadeout When Stopping"));
-        DrawStopAtMaxDistance(drawArea, 1);
+        DrawStopAtMaxDistance(drawArea, 1, viewData);
     }
 
-    private void DrawStopAtMaxDistance(Rect position, int height)
+    private void DrawStopAtMaxDistance(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_stopMaxDistance, new GUIContent("Stop Events At Max distance"));
-        DrawKinematicVelocity(drawArea, 1);
+        DrawKinematicVelocity(drawArea, 1, viewData);
     }
 
-    private void DrawKinematicVelocity(Rect position, int height)
+    private void DrawKinematicVelocity(Rect position, int height, ViewData viewData)
     {
         Rect drawArea = new Rect(position.min.x, position.min.y + (lineHeight * height) + 10, position.size.x, lineHeight);
         EditorGUI.PropertyField(drawArea, m_calculateKinematicVelocity, new GUIContent("Calculate Kinematic Velocity"));
@@ -362,36 +373,44 @@ public class EventConfigurationDrawer : PropertyDrawer
     {
         //Instead of doing this, ask for each property height and return that?
 
-        float numberOfLines = EditorGUI.GetPropertyHeight(property);
+        ViewData viewData;
+        if (!m_PerPropertyViewData.TryGetValue(property.propertyPath, out viewData))
+        {
+            viewData = new ViewData();
+            m_PerPropertyViewData[property.propertyPath] = viewData;
+        }
 
-        if (m_referenceFieldExpanded)
+        //float numberOfLines = EditorGUI.GetPropertyHeight(property);
+        float numberOfLines = 16;
+
+        if (viewData.referenceFieldExpanded)
         {
             numberOfLines += 4;
         }
 
-        if(m_showTransportButtons)
+        if(viewData.showTransportButtons)
         {
-            numberOfLines += 1;
+            numberOfLines += 2;
         }
 
-        if (m_snapshotFieldExpanded)
+        if (viewData.snapshotFieldExpanded)
         {
             numberOfLines += 4;
         }
 
-        if (m_shareInstancesWarning)
+        if (viewData.shareInstancesWarning)
         {
             numberOfLines += 4;
         }
 
-        if (m_polyphonic)
+        if (viewData.polyphonic)
         {
             numberOfLines += 4;
         }
 
-        if (m_otherOptions)
+        if (viewData.otherOptions)
         {
-            numberOfLines += 7;
+            numberOfLines += 8;
         }
 
         //Debug.LogError($"Total lines are {numberOfLines}");
@@ -400,9 +419,9 @@ public class EventConfigurationDrawer : PropertyDrawer
 
     /// <summary>
     /// Gets the object the property represents. 
-    /// CREDITS: 
-    /// https://github.com/lordofduct/spacepuppy-unity-framework/blob/master/SpacepuppyBaseEditor/EditorHelper.cs
+    /// CREDIT: 
     /// https://forum.unity.com/threads/getting-non-serialized-data-in-custom-property-drawer.452526/#post-2933574
+    /// https://github.com/lordofduct/spacepuppy-unity-framework/blob/master/SpacepuppyBaseEditor/EditorHelper.cs
     /// </summary>
     /// <param name="prop"></param>
     /// <returns></returns>
