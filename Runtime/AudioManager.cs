@@ -125,7 +125,7 @@ namespace Hermes
             }
             else
             {
-                //Other emitters are still using this EventInstancesGroup but we are not, so we reduce the number of configs using.
+                //Other emitters are still using this EventInstancesGroup but we are not anymore, so we reduce the number of configs using.
                 eventConfiguration.Provider.EventInstancesGroup.NumberOfConfigsUsing--;
             }
 

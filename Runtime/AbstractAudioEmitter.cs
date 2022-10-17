@@ -10,19 +10,19 @@ namespace Hermes
     public abstract class AbstractAudioEmitter : MonoBehaviour
     {
         protected AudioManager m_audioManager;
-        protected List<EventConfiguration> m_allEvents = new List<EventConfiguration>(); //All events local to this emitter.
+        protected List<EventConfiguration> m_allEmitterEvents = new List<EventConfiguration>(); //All events local to this emitter.
         protected VelocityVector3 m_kinematicVelocity;
         protected Vector3 m_positionLastFrame = Vector3.zero;
-        private List<KineticAttachedInstance> m_kineticAttachedInstances = new List<KineticAttachedInstance>();
+        private List<KinematicAttachedInstance> m_kinematicAttachedInstances = new List<KinematicAttachedInstance>();
 
         public bool IsKinematic //Check if there are any kinematic events in this emitter.
         {
             get
             {
-                if (m_allEvents.Count > 0)
+                if (m_allEmitterEvents.Count > 0)
                 {
                     bool isKinematic = false;
-                    foreach (EventConfiguration eventConfiguration in m_allEvents)
+                    foreach (EventConfiguration eventConfiguration in m_allEmitterEvents)
                     {
                         if (eventConfiguration.CalculateKinematicVelocity)
                         {
@@ -45,6 +45,8 @@ namespace Hermes
 
         protected virtual void Update()
         {
+            //TODO: This is doing the IsKinematic check every frame. Since an emitter event configurations won't change their kinematic nature in runtime,
+            //it would be better to check this once on start and just cache the bool.
             if (IsKinematic && m_kinematicVelocity != null) //We check if any event needs kinematic velocity and wait until we have already started playing that event.
             {
                 UpdateKinematicVelocity();
@@ -63,17 +65,17 @@ namespace Hermes
 
             if (eventConfiguration == null || eventConfiguration.EventRef.IsNull || String.IsNullOrEmpty(eventConfiguration.EventRef.Path))
             {
-                //Should we log an error here? Would we have empty event reference fields on Event configurations ever?
+                //TODO: Should we log an error here? Would we have empty event reference fields on Event configurations ever?
                 return;
             }
 
             //Add event to emitter event list.
-            m_allEvents.Add(eventConfiguration);
+            m_allEmitterEvents.Add(eventConfiguration);
 
             //Add event to the general event list on the audio manager
             m_audioManager.SubscribeEvent(eventConfiguration);
 
-            //Get FMOD description so we can ask FMOD about this event. Banks should be loaded BEFORE we do this.
+            //Get FMOD description so we can ask FMOD about this event. TODO: Banks should be loaded BEFORE we do this.
             eventConfiguration.EventDescription = RuntimeManager.GetEventDescription(eventConfiguration.EventRef);
 
             eventConfiguration.is3D = IsEvent3D(eventConfiguration);
@@ -124,7 +126,7 @@ namespace Hermes
 
             if (gameObject == null)
             {
-                Debug.LogError($"{eventConfiguration} is being played through a null game object");
+                Debug.LogError($"{eventConfiguration} was tried to be played through a null game object.");
                 return;
             }
 
@@ -181,11 +183,11 @@ namespace Hermes
 
         private void AttachKineticInstanceToGameObject(FMOD.Studio.EventInstance instance, Transform transform, VelocityVector3 kinematicVelocity, EventConfiguration eventConfiguration)
         {
-            KineticAttachedInstance attachedInstance = m_kineticAttachedInstances.Find(x => x.Instance.handle == instance.handle);
+            KinematicAttachedInstance attachedInstance = m_kinematicAttachedInstances.Find(x => x.Instance.handle == instance.handle);
             if (attachedInstance == null)
             {
-                attachedInstance = new KineticAttachedInstance();
-                m_kineticAttachedInstances.Add(attachedInstance);
+                attachedInstance = new KinematicAttachedInstance();
+                m_kinematicAttachedInstances.Add(attachedInstance);
             }
 
             instance.set3DAttributes(ToKinematic3DAttributes(transform, kinematicVelocity));
@@ -198,12 +200,12 @@ namespace Hermes
 
         private void DetachKineticInstanceFromGameObject(EventConfiguration eventConfiguration)
         {
-            for (int i = 0; i < m_kineticAttachedInstances.Count; i++)
+            for (int i = 0; i < m_kinematicAttachedInstances.Count; i++)
             {
-                if (m_kineticAttachedInstances[i].EventConfiguration == eventConfiguration)
+                if (m_kinematicAttachedInstances[i].EventConfiguration == eventConfiguration)
                 {
-                    m_kineticAttachedInstances[i] = m_kineticAttachedInstances[m_kineticAttachedInstances.Count - 1];
-                    m_kineticAttachedInstances.RemoveAt(m_kineticAttachedInstances.Count - 1);
+                    m_kinematicAttachedInstances[i] = m_kinematicAttachedInstances[m_kinematicAttachedInstances.Count - 1];
+                    m_kinematicAttachedInstances.RemoveAt(m_kinematicAttachedInstances.Count - 1);
                 }
             }
         }
@@ -239,7 +241,7 @@ namespace Hermes
 
         protected virtual void ReleaseAllEvents()
         {
-            foreach (EventConfiguration eventConfiguration in m_allEvents)
+            foreach (EventConfiguration eventConfiguration in m_allEmitterEvents)
             {
                 ReleaseEvent(eventConfiguration);
             }
@@ -258,7 +260,7 @@ namespace Hermes
 
         protected virtual void StopAllEventsOnEmitter()
         {
-            foreach (EventConfiguration eventConfiguration in m_allEvents)
+            foreach (EventConfiguration eventConfiguration in m_allEmitterEvents)
             {
                 Stop(eventConfiguration);
             }
@@ -304,32 +306,32 @@ namespace Hermes
 
         private void UpdateInstancesVelocities()
         {
-            for (int i = 0; i < m_kineticAttachedInstances.Count; i++)
+            for (int i = 0; i < m_kinematicAttachedInstances.Count; i++)
             {
                 FMOD.Studio.PLAYBACK_STATE playbackState = FMOD.Studio.PLAYBACK_STATE.STOPPED;
-                if (m_kineticAttachedInstances[i].Instance.isValid())
+                if (m_kinematicAttachedInstances[i].Instance.isValid())
                 {
-                    m_kineticAttachedInstances[i].Instance.getPlaybackState(out playbackState);
+                    m_kinematicAttachedInstances[i].Instance.getPlaybackState(out playbackState);
                 }
 
                 if (playbackState == FMOD.Studio.PLAYBACK_STATE.STOPPED ||
-                    m_kineticAttachedInstances[i].Transform == null // destroyed game object
+                    m_kinematicAttachedInstances[i].Transform == null // destroyed game object
                     )
                 {
-                    m_kineticAttachedInstances[i] = m_kineticAttachedInstances[m_kineticAttachedInstances.Count - 1];
-                    m_kineticAttachedInstances.RemoveAt(m_kineticAttachedInstances.Count - 1);
+                    m_kinematicAttachedInstances[i] = m_kinematicAttachedInstances[m_kinematicAttachedInstances.Count - 1];
+                    m_kinematicAttachedInstances.RemoveAt(m_kinematicAttachedInstances.Count - 1);
                     i--;
                     continue;
                 }
 
 
-                if (m_kineticAttachedInstances[i].UseKinematicVelocity && m_kineticAttachedInstances[i].VelocityVector3 != null)
+                if (m_kinematicAttachedInstances[i].UseKinematicVelocity && m_kinematicAttachedInstances[i].VelocityVector3 != null)
                 {
-                    m_kineticAttachedInstances[i].Instance.set3DAttributes(ToKinematic3DAttributes(m_kineticAttachedInstances[i].Transform, m_kineticAttachedInstances[i].VelocityVector3));
+                    m_kinematicAttachedInstances[i].Instance.set3DAttributes(ToKinematic3DAttributes(m_kinematicAttachedInstances[i].Transform, m_kinematicAttachedInstances[i].VelocityVector3));
                 }
                 else
                 {
-                    m_kineticAttachedInstances[i].Instance.set3DAttributes(RuntimeUtils.To3DAttributes(m_kineticAttachedInstances[i].Transform));
+                    m_kinematicAttachedInstances[i].Instance.set3DAttributes(RuntimeUtils.To3DAttributes(m_kinematicAttachedInstances[i].Transform));
                 }
             }
         }
@@ -359,7 +361,7 @@ namespace Hermes
         public float z = 0;
     }
 
-    public class KineticAttachedInstance
+    public class KinematicAttachedInstance
     {
         public FMOD.Studio.EventInstance Instance;
         public EventConfiguration EventConfiguration;
