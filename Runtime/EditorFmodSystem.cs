@@ -21,6 +21,7 @@ namespace Hermes
         private static List<string> temporaryBanks = new List<string> { "Master.bank", "Master.strings.bank" }; //TODO: How to get all the banks progrmatically??
 
         //E:/Unity Projects/Hermes/FMOD Project/Hermes tests/Build/Desktop/
+        //C:/Users/dunbe/Documents/Unity Projects/Hermes BROKEN/FMOD Project/Hermes tests/Build/Desktop/
         public string BankPath;
         public static string m_bankPathStatic { get; private set; }
 
@@ -83,7 +84,7 @@ namespace Hermes
             CheckResult(system.getCoreSystem(out lowlevel));
 
             // Use play-in-editor speaker mode for event browser preview and metering
-            speakerMode = Settings.Instance.GetEditorSpeakerMode();
+            speakerMode = Settings.Instance.PlayInEditorPlatform.SpeakerMode;
             CheckResult(lowlevel.setSoftwareFormat(0, speakerMode, 0));
 
             encryptionKey = Settings.Instance.EncryptionKey;
@@ -123,7 +124,7 @@ namespace Hermes
             {
                 FMOD.Studio.Bank previewBank;
                 var filess = Application.dataPath; //TODO: Find a way to get the fmod bank location for any user...
-                FMOD.RESULT result = System.loadBankFile("E:/Unity Projects/Hermes/FMOD Project/Hermes tests/Build/Desktop/" + bank, FMOD.Studio.LOAD_BANK_FLAGS.NORMAL, out previewBank);
+                FMOD.RESULT result = System.loadBankFile("C:/Users/dunbe/Documents/Unity Projects/Hermes BROKEN/FMOD Project/Hermes tests/Build/Desktop/" + bank, FMOD.Studio.LOAD_BANK_FLAGS.NORMAL, out previewBank);
                 if (result != FMOD.RESULT.ERR_EVENT_ALREADY_LOADED) // ignore error when a bank is already loaded, e.g. localized banks.
                 {
                     CheckResult(result);
@@ -176,12 +177,12 @@ namespace Hermes
             EditorApplication.update -= CallStartupMethodsWhenReady;
 
             // Explicitly initialize Settings so that both it and EditorSettings will work.
-            Settings.Initialize();
+            //Settings.Initialize(); //HERMES, DOESN'T WORK AFTER IMPLEMENTING FMOD 2.02.15
 
             //CheckBaseFolderGUID();
             //CheckMacLibraries();
 
-            Legacy.CleanTemporaryChanges();
+            //Legacy.CleanTemporaryChanges(); //HERMES, DOESN'T WORK AFTER IMPLEMENTING FMOD 2.02.15
             CleanObsoleteFiles();
 
 /*#if UNITY_TIMELINE_EXIST
@@ -274,7 +275,7 @@ namespace Hermes
             {
                 CheckResult(system.update());
 
-                if (speakerMode != Settings.Instance.GetEditorSpeakerMode())
+                if (speakerMode != Settings.Instance.PlayInEditorPlatform.SpeakerMode)
                 {
                     RecreateSystem();
                 }

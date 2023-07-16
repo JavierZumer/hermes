@@ -1,12 +1,12 @@
 {
-    "name": "com.javierzumer.hermes",
-    "version": "0.0.2",
-    "displayName": "Hermes",
-    "description": "FMOD Implementation for Unity",
-    "unity": "2020.3",
-    "author": {
-        "name": "Javier Zumer",
-        "email": "contactme@javierzumer.com",
-        "url": "https://www.javierzumer.com"
-    }
+  "name": "com.javierzumer.hermes",
+  "version": "0.0.2",
+  "displayName": "Hermes",
+  "description": "FMOD Implementation for Unity",
+  "unity": "2022.3",
+  "author": {
+    "name": "Javier Zumer",
+    "email": "contactme@javierzumer.com",
+    "url": "https://www.javierzumer.com"
+  }
 }
