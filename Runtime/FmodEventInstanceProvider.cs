@@ -62,7 +62,7 @@ namespace Hermes
 
             if (m_eventConfiguration.IsShared)
             {
-                //We want to re-use instances so let's check if this fmod event already has instances created
+                //We want to re-use instances so let's check if this fmod event already has instances created.
                 m_instanceGroup = AudioManager.Instance.CheckIfInstancesAlreadyExist(m_eventConfiguration.EventRef.Path);
 
                 if (m_instanceGroup.EventInstances != null)
