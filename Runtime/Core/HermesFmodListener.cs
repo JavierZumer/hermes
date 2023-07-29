@@ -8,6 +8,11 @@ namespace Hermes
     [AddComponentMenu("Hermes/FMOD Studio Listener")]
     public class HermesFmodListener : MonoBehaviour
     {
+        //TODO: Es posible prescindir de esto y de alguna manera hacer funcionar la kinematic velocity en el listener oficial de FMOD?
+        //Si HAY que usar esta clase por narices, podria ser hija del listener normal? O usar extension methods?
+        //Si no, se pueden quitar los avisos sobre usar
+        //un listener pero sin alterar el codigo del plugin de fmod?
+
         [SerializeField]
         private GameObject attenuationObject;
 

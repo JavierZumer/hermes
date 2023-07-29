@@ -11,6 +11,9 @@ using Debug = UnityEngine.Debug;
 using System.Linq;
 using System.Reflection;
 
+//TODO: Hacer esto mucho mas conciso. Por defecto, puedes elegir el evento de fmod y listo. Todo el resto de las opciones aparecen
+//bajo desplegables
+
 [CustomPropertyDrawer(typeof(EventConfiguration))]
 public class EventConfigurationDrawer : PropertyDrawer
 {

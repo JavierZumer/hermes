@@ -15,6 +15,12 @@ namespace Hermes
     [Serializable]
     public class EventConfiguration
     {
+        //TODO: Re-pensar el concepto de compartir instancias o mas bien como presentar esto al usuario.
+        //Idealmente, cuando se elige esta opcion (ShareEventInstances) llevamos una cuenta de ello para que
+        //la siguiente EventConfiguration que use el mismo evento y tambien comparta instancias idealmente
+        //muestre los settings de la primera y si estos se cambian, se cambian para todas ellas. Investigar
+        //como llevar este registro a nivel del editor, necesitaria poder guardar estos datos en algun sitio.
+
         //Internal varialbles
         private FmodEventInstanceProvider m_provider = null;
         private EventInstance EditorInstance;
@@ -101,7 +107,6 @@ namespace Hermes
         public EventReference HighlightSnapshot;
 
         //Instance Management
-
         public bool ShareEventInstances;
 
         [Tooltip("When to instantiate the Fmod Audio Events")]

@@ -10,9 +10,10 @@ using System.Linq;
 
 namespace Hermes
 {
-    public class EditorFmodSystem : MonoBehaviour //TODO: Should this be a singleton??
+    public class EditorFmodSystem : MonoBehaviour 
     {
-
+        //TODO: Should this be a singleton??
+        //TODO: Find a way to get the bank path in a programatic way.
         private static FMOD.Studio.System system;
         private static FMOD.SPEAKERMODE speakerMode;
         private static string encryptionKey;
